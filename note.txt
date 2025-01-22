@@ -1,0 +1,3 @@
+pip install ultralytics
+pip install -U onnx
+python .\yolo.py
