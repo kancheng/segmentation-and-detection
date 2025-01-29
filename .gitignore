@@ -4,6 +4,7 @@ res_*
 test-code/
 wandb/
 *.pth
+runs/
 
 
 # Byte-compiled / optimized / DLL files

@@ -4,7 +4,7 @@ from ultralytics import YOLO
 model = YOLO("yolo11n.yaml")
 
 # Load a pretrained YOLO model (recommended for training)
-model = YOLO("yolo11n.pt")
+model = YOLO("./models/yolo11n.pt")
 
 # Train the model using the 'coco8.yaml' dataset for 3 epochs
 results = model.train(data="coco8.yaml", epochs=3)
