@@ -7,8 +7,8 @@ from PIL import Image
 import argparse
 
 # Args
-# EX: python3 yolo.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
-# EX: python yolo.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
+# EX: python3 yolo-segmentation.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
+# EX: python yolo-segmentation.py --input_datasets_yaml_path="./datasets/default_data/dataset_yolo/YOLODataset_seg/dataset.yaml" --predict_datasets_folder="./datasets/default_data/dataset_predict/"
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--input_datasets_yaml_path', help='input annotated directory')
 parser.add_argument('--predict_datasets_folder', help='predict folder')
@@ -75,23 +75,23 @@ elif models_name == 'yolov9e-seg' :
     info_log_model_type = "INFO. Model Type : " + models_key
     print(info_log_model_type)
 elif models_name == 'yolov11l-seg' :
-    models_key = './models/' + 'yolov11l-seg.pt'
+    models_key = './models/' + 'yolo11l-seg.pt'
     info_log_model_type = "INFO. Model Type : " + models_key
     print(info_log_model_type)
 elif models_name == 'yolov11m-seg' :
-    models_key = './models/' + 'yolov11m-seg.pt'
+    models_key = './models/' + 'yolo11m-seg.pt'
     info_log_model_type = "INFO. Model Type : " + models_key
     print(info_log_model_type)
 elif models_name == 'yolov11n-seg' :
-    models_key = './models/' + 'yolov11n-seg.pt'
+    models_key = './models/' + 'yolo11n-seg.pt'
     info_log_model_type = "INFO. Model Type : " + models_key
     print(info_log_model_type)
 elif models_name == 'yolov11s-seg' :
-    models_key = './models/' + 'yolov11s-seg.pt'
+    models_key = './models/' + 'yolo11s-seg.pt'
     info_log_model_type = "INFO. Model Type : " + models_key
     print(info_log_model_type)
 elif models_name == 'yolov11x-seg' :
-    models_key = './models/' + 'yolov11x-seg.pt'
+    models_key = './models/' + 'yolo11x-seg.pt'
     info_log_model_type = "INFO. Model Type : " + models_key
     print(info_log_model_type)
 else :
