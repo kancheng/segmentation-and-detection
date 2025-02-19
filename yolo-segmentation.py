@@ -42,62 +42,27 @@ project_name = args.name
 models_name = args.models
 models_key = ""
 info_log_model_type = ""
-if models_name == 'yolov8n-seg' :
-    models_key = './models/' + 'yolov8n-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8l-seg' :
-    models_key = './models/' + 'yolov8l-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8m-seg' :
-    models_key = './models/' + 'yolov8m-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8s-seg' :
-    models_key = './models/' + 'yolov8s-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8s' :
-    models_key = './models/' + 'yolov8s.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8x-seg' :
-    models_key = './models/' + 'yolov8x-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov9c-seg' :
-    models_key = './models/' + 'yolov9c-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov9e-seg' :
-    models_key = './models/' + 'yolov9e-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov11l-seg' :
-    models_key = './models/' + 'yolo11l-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov11m-seg' :
-    models_key = './models/' + 'yolo11m-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov11n-seg' :
-    models_key = './models/' + 'yolo11n-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov11s-seg' :
-    models_key = './models/' + 'yolo11s-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov11x-seg' :
-    models_key = './models/' + 'yolo11x-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-else :
-    models_key = './models/' + 'yolo11n-seg.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
+
+model_mapping = {
+    'yolov8n-seg': 'yolov8n-seg.pt',
+    'yolov8l-seg': 'yolov8l-seg.pt',
+    'yolov8m-seg': 'yolov8m-seg.pt',
+    'yolov8s-seg': 'yolov8s-seg.pt',
+    'yolov8x-seg': 'yolov8x-seg.pt',
+    'yolov9c-seg': 'yolov9c-seg.pt',
+    'yolov9e-seg': 'yolov9e-seg.pt',
+    'yolov11l-seg': 'yolo11l-seg.pt',
+    'yolov11m-seg': 'yolo11m-seg.pt',
+    'yolov11n-seg': 'yolo11n-seg.pt',
+    'yolov11s-seg': 'yolo11s-seg.pt',
+    'yolov11x-seg': 'yolo11x-seg.pt'
+}
+
+# 根據模型名稱選擇對應的模型文件，若不存在則默認使用 'yolo11n-seg.pt'
+models_key = './models/' + model_mapping.get(models_name, 'yolo11n-seg.pt')
+info_log_model_type = "INFO. Model Type : " + models_key
+print(info_log_model_type)
+
 
 print(models_key)
 print(models_name)
@@ -146,20 +111,3 @@ model_predict = YOLO(results_yseg_model_path)
 
 for filename in info_files:
     results_ypred = model_predict.predict(source=filename, save=True, save_txt=True)
-
-# YOLO Predict Label to Labelme JSON
-
-files = []
-info_files = []
-files_check = []
-input_folder = os.path.dirname(str(results_yseg.save_dir)) +'/predict'
-input_folder_labels = input_folder + '/labels'
-for filename in os.listdir(input_folder_labels):
-    if filename.endswith((".txt")):
-        info_files.append(input_folder_labels + "/" + filename)
-        files.append(filename) 
-        for con in files:
-            files_check.append(con.split(".")[0])
-print("INFO. Files : ", files)
-print("INFO. The File Of Number : ", len(files))
-# print("INFO. TXT Path : ", info_files)

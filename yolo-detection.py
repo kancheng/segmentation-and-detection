@@ -42,78 +42,31 @@ project_name = args.name
 models_name = args.models
 models_key = ""
 info_log_model_type = ""
-if models_name == 'yolo11n' :
-    models_key = './models/' + 'yolo11n.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8l' :
-    models_key = './models/' + 'yolov8l.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8m' :
-    models_key = './models/' + 'yolov8m.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8n' :
-    models_key = './models/' + 'yolov8n.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8s' :
-    models_key = './models/' + 'yolov8s.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov8x' :
-    models_key = './models/' + 'yolov8x.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov10b' :
-    models_key = './models/' + 'yolov10b.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov10l' :
-    models_key = './models/' + 'yolov10l.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov10m' :
-    models_key = './models/' + 'yolov10m.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov10n' :
-    models_key = './models/' + 'yolov10n.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov10s' :
-    models_key = './models/' + 'yolov10s.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov10x' :
-    models_key = './models/' + 'yolov10x.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov9c' :
-    models_key = './models/' + 'yolov9c.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov9e' :
-    models_key = './models/' + 'yolov9e.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov9m' :
-    models_key = './models/' + 'yolov9m.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov9s' :
-    models_key = './models/' + 'yolov9s.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-elif models_name == 'yolov9t' :
-    models_key = './models/' + 'yolov9t.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
-else :
-    models_key = './models/' + 'yolo11n.pt'
-    info_log_model_type = "INFO. Model Type : " + models_key
-    print(info_log_model_type)
+
+model_mapping = {
+    'yolo11n': 'yolo11n.pt',
+    'yolov8l': 'yolov8l.pt',
+    'yolov8m': 'yolov8m.pt',
+    'yolov8n': 'yolov8n.pt',
+    'yolov8s': 'yolov8s.pt',
+    'yolov8x': 'yolov8x.pt',
+    'yolov10b': 'yolov10b.pt',
+    'yolov10l': 'yolov10l.pt',
+    'yolov10m': 'yolov10m.pt',
+    'yolov10n': 'yolov10n.pt',
+    'yolov10s': 'yolov10s.pt',
+    'yolov10x': 'yolov10x.pt',
+    'yolov9c': 'yolov9c.pt',
+    'yolov9e': 'yolov9e.pt',
+    'yolov9m': 'yolov9m.pt',
+    'yolov9s': 'yolov9s.pt',
+    'yolov9t': 'yolov9t.pt'
+}
+
+# 如果模型名稱在字典中，則選擇對應的模型文件，否則使用默認模型
+models_key = './models/' + model_mapping.get(models_name, 'yolo11n.pt')
+info_log_model_type = "INFO. Model Type : " + models_key
+print(info_log_model_type)
 
 print(models_key)
 print(models_name)
@@ -162,19 +115,3 @@ model_predict = YOLO(results_ydetection_model_path)
 for filename in info_files:
     results_ypred = model_predict.predict(source=filename, save=True, save_txt=True)
 
-# YOLO Predict Label to Labelme JSON
-
-files = []
-info_files = []
-files_check = []
-input_folder = os.path.dirname(str(results_ydetection.save_dir)) +'/predict'
-input_folder_labels = input_folder + '/labels'
-for filename in os.listdir(input_folder_labels):
-    if filename.endswith((".txt")):
-        info_files.append(input_folder_labels + "/" + filename)
-        files.append(filename) 
-        for con in files:
-            files_check.append(con.split(".")[0])
-print("INFO. Files : ", files)
-print("INFO. The File Of Number : ", len(files))
-# print("INFO. TXT Path : ", info_files)
