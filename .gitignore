@@ -7,6 +7,15 @@ wandb/
 runs/
 yolo_runs_*
 
+*.pyc
+data/
+__pycache__/
+checkpoints/
+*.pth
+*.jpg
+venv/
+.idea/
+wandb/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

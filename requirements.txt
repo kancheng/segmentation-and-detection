@@ -3,3 +3,5 @@ numpy
 Pillow
 tqdm
 wandb
+ultralytics
+onnx
