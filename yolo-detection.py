@@ -7,8 +7,8 @@ from PIL import Image
 import argparse
 
 # Args
-# EX: python3 yolo-segmentation.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
-# EX: python yolo-segmentation.py --input_datasets_yaml_path="./datasets/default_data/dataset_yolo/YOLODataset_seg/dataset.yaml" --predict_datasets_folder="./datasets/default_data/dataset_predict/"
+# EX: python3 yolo-detection.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
+# EX: python yolo-detection.py --input_datasets_yaml_path="./datasets/default_data/dataset_yolo/YOLODataset/dataset.yaml" --predict_datasets_folder="./datasets/default_data/dataset_predict/"
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument('--input_datasets_yaml_path', help='input annotated directory')
 parser.add_argument('--predict_datasets_folder', help='predict folder')
@@ -140,10 +140,9 @@ print(info_log_the_file_of_number)
 
 # Train the model
 # Load a model
-# model_seg = YOLO("yolo11n-seg.pt")
 model_detection = YOLO(models_key)
 
-## EX: results = model.train(data="coco8-seg.yaml", epochs=100, imgsz=640)
+## EX: results = model.train(data="coco8.yaml", epochs=100, imgsz=640)
 results_ydetection = model_detection.train(data=input_datasets_yaml_path, epochs=epochs_num, imgsz=640, batch=batch_num)
 results_ydetection_model_path = str(results_ydetection.save_dir)+"/weights/best.pt"
 if not os.path.exists(results_ydetection_model_path):
@@ -156,7 +155,7 @@ log_file = open(log_file_path, 'w')
 log_file.write( info_log_files + '\n' + info_log_the_file_of_number + '\n' + info_log_model + '\n' + info_log_model_type)
 log_file.close()
 # Predict
-## EX : yolo segment predict model='/mnt/../../yolov8/runs/segment/train/weights/best.pt' source='/mnt/../... .png' save_txt=True
+## EX : yolo detect predict model='/mnt/../../yolov8/runs/detection/train/weights/best.pt' source='/mnt/../... .png' save_txt=True
 
 model_predict = YOLO(results_ydetection_model_path)
 
