@@ -1,9 +1,11 @@
-# segmentation-and-detection
+# Segmentation and Detection
 This project provides a comprehensive AI framework for image segmentation and object detection, integrating YOLO, YOLO segmentation, RCNN, UNet, and UNetV2 models.
 
-## YOLO
+## Methods
 
-### Install.
+YOLO, UNet, U2Net
+
+## Install.
 
 ```
 pip install ultralytics
