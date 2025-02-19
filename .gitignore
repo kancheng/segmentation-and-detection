@@ -5,6 +5,7 @@ test-code/
 wandb/
 *.pth
 runs/
+yolo_runs_*
 
 
 # Byte-compiled / optimized / DLL files
