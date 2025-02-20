@@ -15,7 +15,8 @@ from tqdm import tqdm
 
 import wandb
 from evaluate import evaluate
-from unet import UNet
+from unet import UNET
+from unet import U2NET
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 
@@ -180,6 +181,7 @@ def get_args():
     parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
+    parser.add_argument('--model', '-m', type=str, default='unet', help='Model to use')
 
     return parser.parse_args()
 
@@ -194,7 +196,12 @@ if __name__ == '__main__':
     # Change here to adapt to your data
     # n_channels=3 for RGB images
     # n_classes is the number of probabilities you want to get per pixel
-    model = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+
+    # build model
+    if args.model == 'unet' :
+        model = UNET(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.model == 'u2net' :
+        model = U2NET(n_channels=3, n_classes=args.classes)
     model = model.to(memory_format=torch.channels_last)
 
     logging.info(f'Network:\n'

@@ -120,8 +120,7 @@ if(model_name=='u2net'):
 elif(model_name=='u2netp'):
     net = U2NETP(3,1)
 
-if torch.cuda.is_available():
-    net.cpu()
+net.cpu()
 
 # ------- 4. define optimizer --------
 print("---define optimizer...")

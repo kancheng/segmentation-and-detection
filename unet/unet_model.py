@@ -3,9 +3,9 @@
 from .unet_parts import *
 
 
-class UNet(nn.Module):
+class UNET(nn.Module):
     def __init__(self, n_channels, n_classes, bilinear=False):
-        super(UNet, self).__init__()
+        super(UNET, self).__init__()
         self.n_channels = n_channels
         self.n_classes = n_classes
         self.bilinear = bilinear
