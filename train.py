@@ -20,8 +20,8 @@ from unet import U2NET
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 
-dir_img = Path('./data/imgs/')
-dir_mask = Path('./data/masks/')
+dir_img = Path('./demo_data/imgs/')
+dir_mask = Path('./demo_data/masks/')
 dir_checkpoint = Path('./checkpoints/')
 
 
