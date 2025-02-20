@@ -1,3 +1,4 @@
-pip install ultralytics
-pip install -U onnx
-python .\yolo.py
+python train.py -m unet -e 2
+python train.py -m u2net -e 2
+python predict.py -e unet -m ue2.pth -i test.png -o testue2.png
+python predict.py -e u2net -m u2e2.pth -i test.png -o testu2e2.png

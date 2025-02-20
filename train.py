@@ -27,6 +27,7 @@ dir_checkpoint = Path('./checkpoints/')
 
 def train_model(
         model,
+        model_name,
         device,
         epochs: int = 5,
         batch_size: int = 1,
@@ -38,6 +39,7 @@ def train_model(
         weight_decay: float = 1e-8,
         momentum: float = 0.999,
         gradient_clipping: float = 1.0,
+        wandb: bool = False,
 ):
     # 1. Create dataset
     try:
@@ -56,11 +58,13 @@ def train_model(
     val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 
     # (Initialize logging)
-    experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
-    experiment.config.update(
-        dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
-             val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale, amp=amp)
-    )
+    experiment = None
+    if args.wandb == True :
+        experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
+        experiment.config.update(
+            dict(epochs=epochs, batch_size=batch_size, learning_rate=learning_rate,
+                val_percent=val_percent, save_checkpoint=save_checkpoint, img_scale=img_scale, amp=amp)
+        )
 
     logging.info(f'''Starting training:
         Epochs:          {epochs}
@@ -99,17 +103,34 @@ def train_model(
                 true_masks = true_masks.to(device=device, dtype=torch.long)
 
                 with torch.autocast(device.type if device.type != 'mps' else 'cpu', enabled=amp):
-                    masks_pred = model(images)
-                    if model.n_classes == 1:
-                        loss = criterion(masks_pred.squeeze(1), true_masks.float())
-                        loss += dice_loss(F.sigmoid(masks_pred.squeeze(1)), true_masks.float(), multiclass=False)
+                    outputs = model(images)
+                    if isinstance(outputs, tuple):
+                        # 对于多输出模型（如 U2NET）
+                        loss = 0
+                        for out in outputs:
+                            if model.n_classes == 1:
+                                current_loss = criterion(out.squeeze(1), true_masks.float())
+                                current_loss += dice_loss(F.sigmoid(out.squeeze(1)), true_masks.float(), multiclass=False)
+                            else:
+                                current_loss = criterion(out, true_masks)
+                                current_loss += dice_loss(
+                                    F.softmax(out, dim=1).float(),
+                                    F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(),
+                                    multiclass=True
+                                )
+                            loss += current_loss
                     else:
-                        loss = criterion(masks_pred, true_masks)
-                        loss += dice_loss(
-                            F.softmax(masks_pred, dim=1).float(),
-                            F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(),
-                            multiclass=True
-                        )
+                        # 对于单输出模型（如 UNET）
+                        if model.n_classes == 1:
+                            loss = criterion(outputs.squeeze(1), true_masks.float())
+                            loss += dice_loss(F.sigmoid(outputs.squeeze(1)), true_masks.float(), multiclass=False)
+                        else:
+                            loss = criterion(outputs, true_masks)
+                            loss += dice_loss(
+                                F.softmax(outputs, dim=1).float(),
+                                F.one_hot(true_masks, model.n_classes).permute(0, 3, 1, 2).float(),
+                                multiclass=True
+                            )
 
                 optimizer.zero_grad(set_to_none=True)
                 grad_scaler.scale(loss).backward()
@@ -121,11 +142,12 @@ def train_model(
                 pbar.update(images.shape[0])
                 global_step += 1
                 epoch_loss += loss.item()
-                experiment.log({
-                    'train loss': loss.item(),
-                    'step': global_step,
-                    'epoch': epoch
-                })
+                if args.wandb == True :
+                    experiment.log({
+                        'train loss': loss.item(),
+                        'step': global_step,
+                        'epoch': epoch
+                    })
                 pbar.set_postfix(**{'loss (batch)': loss.item()})
 
                 # Evaluation round
@@ -135,36 +157,38 @@ def train_model(
                         histograms = {}
                         for tag, value in model.named_parameters():
                             tag = tag.replace('/', '.')
-                            if not (torch.isinf(value) | torch.isnan(value)).any():
-                                histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                            if not (torch.isinf(value.grad) | torch.isnan(value.grad)).any():
-                                histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
+                            if args.wandb == True :
+                                if not (torch.isinf(value) | torch.isnan(value)).any():
+                                    histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
+                                if not (torch.isinf(value.grad) | torch.isnan(value.grad)).any():
+                                    histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
-                        val_score = evaluate(model, val_loader, device, amp)
+                        val_score = evaluate(model, val_loader, device, amp, model.n_classes)
                         scheduler.step(val_score)
 
                         logging.info('Validation Dice score: {}'.format(val_score))
-                        try:
-                            experiment.log({
-                                'learning rate': optimizer.param_groups[0]['lr'],
-                                'validation Dice': val_score,
-                                'images': wandb.Image(images[0].cpu()),
-                                'masks': {
-                                    'true': wandb.Image(true_masks[0].float().cpu()),
-                                    'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
-                                },
-                                'step': global_step,
-                                'epoch': epoch,
-                                **histograms
-                            })
-                        except:
-                            pass
+                        if args.wandb == True :
+                            try:
+                                experiment.log({
+                                    'learning rate': optimizer.param_groups[0]['lr'],
+                                    'validation Dice': val_score,
+                                    'images': wandb.Image(images[0].cpu()),
+                                    'masks': {
+                                        'true': wandb.Image(true_masks[0].float().cpu()),
+                                        'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
+                                    },
+                                    'step': global_step,
+                                    'epoch': epoch,
+                                    **histograms
+                                })
+                            except:
+                                pass
 
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
             state_dict = model.state_dict()
             state_dict['mask_values'] = dataset.mask_values
-            torch.save(state_dict, str(dir_checkpoint / 'checkpoint_epoch{}.pth'.format(epoch)))
+            torch.save(state_dict, str(dir_checkpoint / f'{model_name}_checkpoint_epoch{epoch}.pth'))
             logging.info(f'Checkpoint {epoch} saved!')
 
 
@@ -180,11 +204,10 @@ def get_args():
                         help='Percent of the data that is used as validation (0-100)')
     parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
-    parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
+    parser.add_argument('--classes', '-c', type=int, default=1, help='Number of classes')
     parser.add_argument('--model', '-m', type=str, default='unet', help='Model to use')
-
+    parser.add_argument('--wandb', action='store_true', default=False, help='是否啟用 Weights & Biases 日誌紀錄 (預設不啟用)')
     return parser.parse_args()
-
 
 if __name__ == '__main__':
     args = get_args()
@@ -219,13 +242,15 @@ if __name__ == '__main__':
     try:
         train_model(
             model=model,
+            model_name=args.model,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
             device=device,
             img_scale=args.scale,
             val_percent=args.val / 100,
-            amp=args.amp
+            amp=args.amp,
+            wandb=args.wandb
         )
     except torch.cuda.OutOfMemoryError:
         logging.error('Detected OutOfMemoryError! '
@@ -235,11 +260,13 @@ if __name__ == '__main__':
         model.use_checkpointing()
         train_model(
             model=model,
+            model_name=args.model,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
             device=device,
             img_scale=args.scale,
             val_percent=args.val / 100,
-            amp=args.amp
+            amp=args.amp,
+            wandb=args.wandb
         )

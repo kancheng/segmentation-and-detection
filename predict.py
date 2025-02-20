@@ -9,7 +9,8 @@ from PIL import Image
 from torchvision import transforms
 
 from utils.data_loading import BasicDataset
-from unet import UNet
+from unet import UNET
+from unet import U2NET
 from utils.utils import plot_img_and_mask
 
 def predict_img(net,
@@ -23,7 +24,13 @@ def predict_img(net,
     img = img.to(device=device, dtype=torch.float32)
 
     with torch.no_grad():
-        output = net(img).cpu()
+        outputs = net(img)
+        # 如果返回的是元组，则取第一个输出
+        if isinstance(outputs, tuple):
+            output = outputs[0]
+        else:
+            output = outputs
+        output = output.cpu()
         output = F.interpolate(output, (full_img.size[1], full_img.size[0]), mode='bilinear')
         if net.n_classes > 1:
             mask = output.argmax(dim=1)
@@ -47,8 +54,9 @@ def get_args():
     parser.add_argument('--scale', '-s', type=float, default=0.5,
                         help='Scale factor for the input images')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
-    parser.add_argument('--classes', '-c', type=int, default=2, help='Number of classes')
-    
+    parser.add_argument('--classes', '-c', type=int, default=1, help='Number of classes')
+    parser.add_argument('--net', '-e', type=str, default='unet', help='Model to use')
+
     return parser.parse_args()
 
 
@@ -60,12 +68,15 @@ def get_output_filenames(args):
 
 
 def mask_to_image(mask: np.ndarray, mask_values):
+    # 针对mask_values的最大值选择合适的数据类型
     if isinstance(mask_values[0], list):
-        out = np.zeros((mask.shape[-2], mask.shape[-1], len(mask_values[0])), dtype=np.uint8)
+        dtype = np.uint16 if max(mask_values[0]) > 255 else np.uint8
+        out = np.zeros((mask.shape[-2], mask.shape[-1], len(mask_values[0])), dtype=dtype)
     elif mask_values == [0, 1]:
         out = np.zeros((mask.shape[-2], mask.shape[-1]), dtype=bool)
     else:
-        out = np.zeros((mask.shape[-2], mask.shape[-1]), dtype=np.uint8)
+        dtype = np.uint16 if max(mask_values) > 255 else np.uint8
+        out = np.zeros((mask.shape[-2], mask.shape[-1]), dtype=dtype)
 
     if mask.ndim == 3:
         mask = np.argmax(mask, axis=0)
@@ -83,7 +94,11 @@ if __name__ == '__main__':
     in_files = args.input
     out_files = get_output_filenames(args)
 
-    net = UNet(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    # 根据指定模型构建网络
+    if args.net == 'unet':
+        net = UNET(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
+    elif args.net == 'u2net':
+        net = U2NET(n_channels=3, n_classes=args.classes)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Loading model {args.model}')
@@ -98,7 +113,8 @@ if __name__ == '__main__':
 
     for i, filename in enumerate(in_files):
         logging.info(f'Predicting image {filename} ...')
-        img = Image.open(filename)
+        # 确保图像转换为 RGB 模式，防止输入通道数错误
+        img = Image.open(filename).convert('RGB')
 
         mask = predict_img(net=net,
                            full_img=img,

@@ -319,6 +319,9 @@ class U2NET(nn.Module):
 
     def __init__(self,n_channels=3,n_classes=1):
         super(U2NET,self).__init__()
+        self.n_channels = n_channels
+        self.n_classes = n_classes
+        self.bilinear = False  # 根据您的架构调整是否使用双线性上采样
 
         self.stage1 = RSU7(n_channels,32,64)
         self.pool12 = nn.MaxPool2d(2,stride=2,ceil_mode=True)
