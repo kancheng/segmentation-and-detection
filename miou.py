@@ -15,29 +15,10 @@ import argparse
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 1. 載入 U-Net & U2Net 模型
-class UNet(nn.Module):
-    def __init__(self, in_channels=3, out_channels=1):
-        super(UNet, self).__init__()
-        # 定義 U-Net 結構 (簡化版本)
-        self.encoder = nn.Sequential(
-            nn.Conv2d(in_channels, 64, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.ReLU(inplace=True)
-        )
-        self.decoder = nn.Sequential(
-            nn.Conv2d(64, out_channels, kernel_size=3, padding=1),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        x = self.encoder(x)
-        x = self.decoder(x)
-        return x
 
 # 載入模型
 model_path = "model.pth"  # 請修改成你的模型路徑
-model = UNet(in_channels=3, out_channels=1)  # 依據你的模型架構修改
+model = UNET(in_channels=3, out_channels=1)  # 依據你的模型架構修改
 model.load_state_dict(torch.load(model_path, map_location=device))
 model.to(device)
 model.eval()
