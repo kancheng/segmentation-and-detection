@@ -5,6 +5,7 @@ from ultralytics import settings
 import argparse 
 from PIL import Image
 import argparse
+from function.fypredict import yolo2maskdir_all
 
 # Args
 # EX: python3 yolo-segmentation.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
@@ -111,3 +112,9 @@ model_predict = YOLO(results_yseg_model_path)
 
 for filename in info_files:
     results_ypred = model_predict.predict(source=filename, save=True, save_txt=True)
+
+label_dir = str(results_yseg.save_dir)+ "/predict/labels"
+images_size_dir = str(results_yseg.save_dir)+ "/predict"
+output_mask_dir = str(results_yseg.save_dir)+ "/predict/masks"
+
+yolo2maskdir_all(label_dir,images_size_dir,output_mask_dir)
