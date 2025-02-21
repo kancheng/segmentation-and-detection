@@ -4,8 +4,9 @@ from ultralytics import YOLO
 from ultralytics import settings
 import argparse 
 from PIL import Image
+import cv2
+import numpy as np
 import argparse
-from function.fypredict import yolo2maskdir_all
 
 # Args
 # EX: python3 yolo-segmentation.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
@@ -113,8 +114,217 @@ model_predict = YOLO(results_yseg_model_path)
 for filename in info_files:
     results_ypred = model_predict.predict(source=filename, save=True, save_txt=True)
 
-label_dir = str(results_yseg.save_dir)+ "/predict/labels"
-images_size_dir = str(results_yseg.save_dir)+ "/predict"
-output_mask_dir = str(results_yseg.save_dir)+ "/predict/masks"
+
+## 將預測結果轉換為mask
+
+label_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict/labels"
+print(label_dir)
+images_size_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict"
+print(images_size_dir)
+output_mask_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict/masks"
+print(output_mask_dir)
+# 判断路径是否存在，不存在则创建
+if not os.path.exists(output_mask_dir):
+    os.makedirs(output_mask_dir)
+
+'''
+Read txt annotation files and original images
+'''
+
+def read_txt_labels(txt_file):
+    """
+    Read labels from txt annotation file
+    :param txt_file: txt annotation file path
+    :return: tag list
+    """
+    with open(txt_file, "r") as f:
+        labels = []
+        for line in f.readlines():
+            label_data = line.strip().split(" ")
+            class_id = int(label_data[0])
+            # Parsing bounding box coordinates
+            coordinates = [float(x) for x in label_data[1:]]
+            labels.append([class_id, coordinates])
+    return labels
+
+def draw_labels(mask, labels):
+    """
+    Draw segmentation regions on the image
+    :param image: image
+    :param labels: list of labels
+    """
+    for label in labels:
+        class_id, coordinates = label
+        # Convert coordinates to integers and reshape into polygons
+        points = [(int(x * mask.shape[1]), int(y * mask.shape[0])) for x, y in zip(coordinates[::2], coordinates[1::2])]
+        # Use polygon fill
+        cv2.fillPoly(mask, [np.array(points)], (255, 255, 255)) # Green indicates segmented area
+
+def yolo2maskdir(kpimg,kptxt,kout):
+    """
+    Restore the YOLO semantic segmentation txt annotation file to the original image
+    """
+    # Reading an Image
+    # image = cv2.imread("./test/coco128.jpg")
+    image = cv2.imread(kpimg)
+    height, width, _  = image.shape
+    mask = np.zeros_like(image, dtype=np.uint8)
+    # Read txt annotation file
+    # txt_file = "./test/coco128.txt"
+    txt_file = kptxt
+    labels = read_txt_labels(txt_file)
+    # Draw segmentation area
+    draw_labels(mask, labels)
+    # Get the window size
+    # window_size = (width//2, height//2) # You can resize the window as needed
+    window_size = (width, height) # You can resize the window as needed
+    # Resize an image
+    mask = cv2.resize(mask, window_size)
+    # Create a black image the same size as the window
+    background = np.zeros((window_size[1], window_size[0], 3), np.uint8)
+    # Place the image in the center of the black background
+    mask_x = int((window_size[0] - mask.shape[1]) / 2)
+    mask_y = int((window_size[1] - mask.shape[0]) / 2)
+    background[mask_y:mask_y + mask.shape[0], mask_x:mask_x + mask.shape[1]] = mask
+    # cv2.namedWindow("Image", cv2.WINDOW_NORMAL)
+    # cv2.imshow("Image", image)
+    # cv2.waitKey(0)
+    # Filename
+    # filename = 'savedMasks.jpg'args.output
+    filename_o = kout
+
+    # Using cv2.imwrite() method
+    # Saving the image
+    cv2.imwrite(filename_o, mask)
+
+def get_prefix(filename):
+    """
+    取得檔名中「.」之前的字串
+    """
+    return filename.split('.')[0]
+
+def filter_common_prefix(list1, list2):
+    """
+    比較兩個列表，保留在 . 之前的前綴一致的檔案
+    回傳 (filtered_list1, filtered_list2)
+    """
+    # 取得各列表所有檔案的前綴集合
+    prefixes1 = {get_prefix(f) for f in list1}
+    prefixes2 = {get_prefix(f) for f in list2}
+    
+    # 求交集，得到共同的前綴
+    common_prefixes = prefixes1.intersection(prefixes2)
+    
+    # 依據共同前綴過濾各自的列表
+    filtered_list1 = [f for f in list1 if get_prefix(f) in common_prefixes]
+    filtered_list2 = [f for f in list2 if get_prefix(f) in common_prefixes]
+    
+    return filtered_list1, filtered_list2
+
+def yolo2maskdir_all(label_dir,images_size_dir,output_mask_dir):
+    files = []
+    txts = []
+    for filename in os.listdir(images_size_dir):
+        if filename.endswith((".png", ".jpg", ".jpeg", ".bmp", ".JPG", ".JPEG", ".PNG")):
+            #ts = os.path.join(images_size_dir, filename)
+            files.append(filename)
+    for filename in os.listdir(label_dir):
+        if filename.endswith((".txt")):
+            #ts = os.path.join(label_dir, filename)
+            txts.append(filename)
+    filtered_files, filtered_txts = filter_common_prefix(files, txts)
+    final_files = []
+    final_txts = []
+    for filename in filtered_files:
+        ts = os.path.join(images_size_dir, filename)
+        final_files.append(ts)
+    for filename in filtered_txts:
+        ts = os.path.join(label_dir, filename)
+        final_txts.append(ts)
+    for i in range(len(final_files)):
+        pimg = final_files[i]
+        ptxt = final_txts[i]
+        pout = os.path.join(output_mask_dir, os.path.basename(filtered_files[i]))
+        yolo2maskdir(pimg,ptxt,pout)
 
 yolo2maskdir_all(label_dir,images_size_dir,output_mask_dir)
+
+# 計算 mIoU
+
+def calculate_iou(pred_mask_path, gt_mask_path, threshold=127):
+    # 讀取圖像，使用灰階模式
+    pred_mask = cv2.imread(pred_mask_path, cv2.IMREAD_GRAYSCALE)
+    gt_mask = cv2.imread(gt_mask_path, cv2.IMREAD_GRAYSCALE)
+    
+    # 檢查是否成功讀取檔案
+    if pred_mask is None:
+        raise ValueError(f"無法讀取預測的 Mask 圖檔: {pred_mask_path}")
+    if gt_mask is None:
+        raise ValueError(f"無法讀取原先標柱的 Mask 圖檔: {gt_mask_path}")
+    
+    # 將圖像轉成二值圖 (0 與 255)
+    _, pred_mask_bin = cv2.threshold(pred_mask, threshold, 255, cv2.THRESH_BINARY)
+    _, gt_mask_bin = cv2.threshold(gt_mask, threshold, 255, cv2.THRESH_BINARY)
+    
+    # 將二值圖轉換為 0 與 1（方便計算）
+    pred_mask_bin = pred_mask_bin // 255
+    gt_mask_bin = gt_mask_bin // 255
+    
+    # 計算交集與聯集
+    intersection = np.logical_and(pred_mask_bin, gt_mask_bin).sum()
+    union = np.logical_or(pred_mask_bin, gt_mask_bin).sum()
+    
+    # 避免除以 0 的狀況
+    if union == 0:
+        return 0.0
+    
+    iou = intersection / union
+    return iou
+
+def calculate_miou(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png'):
+    """
+    計算多張預測結果和多張 Ground Truth 的 mIoU，處理附檔名不同的情況
+    """
+    predict_files = sorted(os.listdir(predict_dir))
+    print("predict_files",predict_files)
+    ground_truth_files = sorted(os.listdir(ground_truth_dir))
+    print("ground_truth_files",ground_truth_files)
+    iou_list = []
+
+    # 遍歷所有的 Ground Truth 文件
+    for gt_file in ground_truth_files:
+        gt_path = os.path.join(ground_truth_dir, gt_file)
+        print("gt_path",gt_path)
+        # 嘗試找尋對應的預測文件，假設檔名一致，但附檔名不同
+        pred_file = os.path.splitext(gt_file)[0] + pred_ext  # 使用 Ground Truth 檔名並修改為預測圖像的附檔名
+        # print(pred_file)
+        pred_path = os.path.join(predict_dir, pred_file)
+        print("pred_path",pred_path)
+        if os.path.exists(pred_path):
+            # 讀取二值化圖像
+            pred_img = cv2.imread(pred_path, cv2.IMREAD_GRAYSCALE)
+            gt_img = cv2.imread(gt_path, cv2.IMREAD_GRAYSCALE)
+
+            # 計算 IoU
+            iou = calculate_iou(pred_mask_path=pred_path, gt_mask_path=gt_path)
+            iou_list.append(iou)
+        else:
+            print(f"Warning: No prediction file for Ground Truth {gt_file}, skipping...")
+
+    # 計算 mIoU
+    if iou_list:
+        miou = np.mean(iou_list)
+        return miou
+    else:
+        print("No valid predictions found.")
+        return 0
+
+# 使用範例
+predict_path = output_mask_dir  # 預測結果的路徑
+# predict_path = './datasets/default_data/dataset_masks/masks'  # 預測結果的路徑
+ground_truth_path = './datasets/default_data/dataset_masks2/masks'  # Ground Truth 的路徑
+
+miou_value = calculate_miou(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png')
+print(f'Mean IoU: {miou_value:.4f}')
+
+

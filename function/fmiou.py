@@ -69,11 +69,3 @@ def calculate_miou(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png'
     else:
         print("No valid predictions found.")
         return 0
-
-# 使用範例
-predict_path = './yolo_runs_yolo11n-seg_dl_/segment/predict/masks'  # 預測結果的路徑
-# predict_path = './datasets/default_data/dataset_masks/masks'  # 預測結果的路徑
-ground_truth_path = './datasets/default_data/dataset_masks/masks'  # Ground Truth 的路徑
-
-miou_value = calculate_miou(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png')
-print(f'Mean IoU: {miou_value:.4f}')

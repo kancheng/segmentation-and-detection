@@ -33,7 +33,7 @@ def calculate_iou(pred_mask_path, gt_mask_path, threshold=127):
 
 if __name__ == '__main__':
     # 設定預測的 mask 路徑與 ground truth mask 路徑
-    pred_mask_path = 'predict_mask.png'
+    pred_mask_path = 'predict_mask.jpg'
     gt_mask_path = 'gt_mask.png'
     
     iou = calculate_iou(pred_mask_path, gt_mask_path)
