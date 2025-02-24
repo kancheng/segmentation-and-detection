@@ -45,6 +45,10 @@ info_log_model_type = ""
 
 model_mapping = {
     'yolo11n': 'yolo11n.pt',
+    'yolo11s': 'yolo11s.pt',
+    'yolo11m': 'yolo11m.pt',
+    'yolo11l': 'yolo11l.pt',
+    'yolo11x': 'yolo11x.pt',
     'yolov8l': 'yolov8l.pt',
     'yolov8m': 'yolov8m.pt',
     'yolov8n': 'yolov8n.pt',
@@ -60,7 +64,12 @@ model_mapping = {
     'yolov9e': 'yolov9e.pt',
     'yolov9m': 'yolov9m.pt',
     'yolov9s': 'yolov9s.pt',
-    'yolov9t': 'yolov9t.pt'
+    'yolov9t': 'yolov9t.pt',
+    'yolo12n': 'yolo12n.pt',
+    'yolo12s': 'yolo12s.pt',
+    'yolo12m': 'yolo12m.pt',
+    'yolo12l': 'yolo12l.pt',
+    'yolo12x': 'yolo12x.pt'
 }
 
 # 如果模型名稱在字典中，則選擇對應的模型文件，否則使用默認模型

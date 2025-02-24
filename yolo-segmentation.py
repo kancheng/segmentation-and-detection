@@ -325,6 +325,13 @@ predict_path = output_mask_dir  # 預測結果的路徑
 ground_truth_path = './datasets/default_data/dataset_masks2/masks'  # Ground Truth 的路徑
 
 miou_value = calculate_miou(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png')
+tem_miou_value = "Mean IoU: " + str(miou_value)
 print(f'Mean IoU: {miou_value:.4f}')
 
+res_file_path = os.path.dirname(str(results_yseg.save_dir)) + "/result.txt"
+# 開啟檔案，如果檔案不存在會自動創建
+with open(res_file_path, 'w', encoding='utf-8') as file:
+    # 寫入內容
+    file.write(tem_miou_value)
 
+print(f"檔案 '{res_file_path}' 已建立並寫入成功。")
