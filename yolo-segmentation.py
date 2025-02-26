@@ -53,11 +53,11 @@ model_mapping = {
     'yolov8x-seg': 'yolov8x-seg.pt',
     'yolov9c-seg': 'yolov9c-seg.pt',
     'yolov9e-seg': 'yolov9e-seg.pt',
-    'yolov11l-seg': 'yolo11l-seg.pt',
-    'yolov11m-seg': 'yolo11m-seg.pt',
-    'yolov11n-seg': 'yolo11n-seg.pt',
-    'yolov11s-seg': 'yolo11s-seg.pt',
-    'yolov11x-seg': 'yolo11x-seg.pt'
+    'yolo11l-seg': 'yolo11l-seg.pt',
+    'yolo11m-seg': 'yolo11m-seg.pt',
+    'yolo11n-seg': 'yolo11n-seg.pt',
+    'yolo11s-seg': 'yolo11s-seg.pt',
+    'yolo11x-seg': 'yolo11x-seg.pt'
 }
 
 # 根據模型名稱選擇對應的模型文件，若不存在則默認使用 'yolo11n-seg.pt'
