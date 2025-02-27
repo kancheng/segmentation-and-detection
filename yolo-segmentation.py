@@ -322,7 +322,7 @@ def calculate_miou(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png'
 # 使用範例
 predict_path = output_mask_dir  # 預測結果的路徑
 # predict_path = './datasets/default_data/dataset_masks/masks'  # 預測結果的路徑
-ground_truth_path = './datasets/default_data/dataset_masks2/masks'  # Ground Truth 的路徑
+ground_truth_path = './datasets/default_data2/dataset_masks2/masks'  # Ground Truth 的路徑
 
 miou_value = calculate_miou(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png')
 tem_miou_value = "Mean IoU: " + str(miou_value)
