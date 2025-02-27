@@ -1,6 +1,18 @@
 import os
 import numpy as np
 import cv2
+import argparse
+
+# Set up argument parser
+parser = argparse.ArgumentParser()
+parser.add_argument('--pp', default=None, help='The predict path')
+parser.add_argument('--gdp', default=None, help='The ground truth path')
+args = parser.parse_args()
+
+# Check if the paths are provided
+if not args.pp or not args.gdp:
+    print("Error: Missing required paths. Please provide both prediction and ground truth paths.")
+    sys.exit(1)  # Exit the script if paths are not provided
 
 def calculate_iou(pred_mask_path, gt_mask_path, threshold=127):
     # 讀取圖像，使用灰階模式
@@ -71,9 +83,11 @@ def calculate_miou(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png'
         return 0
 
 # 使用範例
-predict_path = './yolo_runs_yolo11n-seg_dl_/segment/predict/masks'  # 預測結果的路徑
-# predict_path = './datasets/default_data/dataset_masks/masks'  # 預測結果的路徑
-ground_truth_path = './datasets/default_data/dataset_masks/masks'  # Ground Truth 的路徑
+# predict_path = './yolo_runs_yolo11n-seg_dl_/segment/predict/masks'  # 預測結果的路徑
+# ground_truth_path = './datasets/default_data/dataset_masks/masks'  # Ground Truth 的路徑
+
+predict_path = args.pp  # 預測結果的路徑
+ground_truth_path = args.gdp  # Ground Truth 的路徑
 
 miou_value = calculate_miou(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png')
 print(f'Mean IoU: {miou_value:.4f}')
