@@ -10,7 +10,6 @@ from torchvision import transforms
 
 from utils.data_loading import BasicDataset
 from unet import UNET
-from unet import U2NET
 from utils.utils import plot_img_and_mask
 
 def predict_img(net,
@@ -97,8 +96,6 @@ if __name__ == '__main__':
     # 根据指定模型构建网络
     if args.net == 'unet':
         net = UNET(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.net == 'u2net':
-        net = U2NET(n_channels=3, n_classes=args.classes)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'Loading model {args.model}')

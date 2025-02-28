@@ -10,7 +10,6 @@ from torchvision import transforms
 
 from utils.data_loading import BasicDataset
 from unet import UNET
-from unet import U2NET
 from utils.utils import plot_img_and_mask
 
 
@@ -136,8 +135,6 @@ if __name__ == '__main__':
     # 根據指定模型構建網路
     if args.net == 'unet':
         net = UNET(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.net == 'u2net':
-        net = U2NET(n_channels=3, n_classes=args.classes)
     else:
         raise ValueError("未知的模型類型")
 
