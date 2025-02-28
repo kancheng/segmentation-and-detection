@@ -1,17 +1,28 @@
 import argparse
 import logging
 import os
-
 import numpy as np
 import torch
 import torch.nn.functional as F
 from PIL import Image
 from torchvision import transforms
-
 from utils.data_loading import BasicDataset
 from unet import UNET
 from utils.utils import plot_img_and_mask
 
+def dice_coef(pred, target, num_classes):
+    """
+    計算 Dice 系數
+    """
+    smooth = 1.0
+    dice = 0.0
+    for cls in range(num_classes):
+        pred_cls = (torch.tensor(pred) == cls).float()  # 轉換為 torch 張量並使用 float()
+        target_cls = (torch.tensor(target) == cls).float()  # 轉換為 torch 張量並使用 float()
+        intersection = (pred_cls * target_cls).sum()
+        union = pred_cls.sum() + target_cls.sum()
+        dice += (2. * intersection + smooth) / (union + smooth)
+    return dice / num_classes
 
 def predict_img(net, full_img, device, scale_factor=1, out_threshold=0.5):
     net.eval()
@@ -57,7 +68,7 @@ def mask_to_image(mask: np.ndarray, mask_values):
 
 
 def get_args():
-    parser = argparse.ArgumentParser(description='Predict masks from a directory of input images and compute mIoU')
+    parser = argparse.ArgumentParser(description='Predict masks from a directory of input images and compute mIoU and mDice')
     parser.add_argument('--model', '-m', default='MODEL.pth', metavar='FILE',
                         help='指定存放模型的檔案')
     parser.add_argument('--input-dir', '-i', metavar='INPUT_DIR',
@@ -78,11 +89,14 @@ def get_args():
     parser.add_argument('--net', '-e', type=str, default='unet', help='使用的模型類型')
     return parser.parse_args()
 
-
-def compute_miou(gt_dir, pred_dir, num_classes):
+def compute_miou_and_mdice(gt_dir, pred_dir, num_classes):
     gt_files = [f for f in sorted(os.listdir(gt_dir)) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp'))]
+    
     total_intersection = np.zeros(num_classes, dtype=np.float64)
     total_union = np.zeros(num_classes, dtype=np.float64)
+    total_dice = 0.0
+    num_images = 0
+    
     for file in gt_files:
         gt_path = os.path.join(gt_dir, file)
         pred_path = os.path.join(pred_dir, file)
@@ -91,6 +105,8 @@ def compute_miou(gt_dir, pred_dir, num_classes):
             continue
         gt_mask = np.array(Image.open(gt_path))
         pred_mask = np.array(Image.open(pred_path))
+
+        # Calculate IoU
         for cls in range(num_classes):
             gt_cls = (gt_mask == cls)
             pred_cls = (pred_mask == cls)
@@ -99,6 +115,11 @@ def compute_miou(gt_dir, pred_dir, num_classes):
             total_intersection[cls] += intersection
             total_union[cls] += union
 
+        # Calculate Dice Coefficient
+        total_dice += dice_coef(pred_mask, gt_mask, num_classes)
+        num_images += 1
+
+    # Calculate IoU
     ious = []
     for cls in range(num_classes):
         if total_union[cls] == 0:
@@ -108,14 +129,16 @@ def compute_miou(gt_dir, pred_dir, num_classes):
         ious.append(iou)
         logging.info(f'類別 {cls} 的 IoU: {iou:.4f}')
 
+    # Calculate mIoU and mDice
     if len(ious) > 0:
         miou = sum(ious) / len(ious)
+        mdice = total_dice / num_images
         logging.info(f'平均 mIoU: {miou:.4f}')
-        return miou
+        logging.info(f'平均 mDice: {mdice:.4f}')
+        return miou, mdice
     else:
         logging.warning('無法計算 mIoU，請確認 ground truth 中至少有一個類別存在')
-        return None
-
+        return None, None
 
 if __name__ == '__main__':
     args = get_args()
@@ -168,7 +191,7 @@ if __name__ == '__main__':
             logging.info(f'視覺化 {in_file} 的結果，關閉視窗以繼續...')
             plot_img_and_mask(img, mask)
 
-    # 如果有提供 ground truth 目錄，則計算 mIoU
+    # 如果有提供 ground truth 目錄，則計算 mIoU 和 mDice
     if args.gt_dir:
-        logging.info('開始計算 mIoU...')
-        compute_miou(args.gt_dir, args.output_dir, args.classes)
+        logging.info('開始計算 mIoU 和 mDice...')
+        miou, mdice = compute_miou_and_mdice(args.gt_dir, args.output_dir, args.classes)
