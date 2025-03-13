@@ -59,8 +59,11 @@ def draw_labels(mask, labels):
         class_id, coordinates = label
         # Convert coordinates to integers and reshape into polygons
         points = [(int(x * mask.shape[1]), int(y * mask.shape[0])) for x, y in zip(coordinates[::2], coordinates[1::2])]
-        # Use polygon fill
-        cv2.fillPoly(mask, [np.array(points)], (255, 255, 255)) # Green indicates segmented area
+        # 若點數小於3則不執行填充，以避免 cv2.fillPoly 斷言失敗
+        if len(points) >= 3:
+            pts = np.array(points, dtype=np.int32).reshape((-1, 1, 2))
+            # Use polygon fill
+            cv2.fillPoly(mask, [pts], (255, 255, 255)) # Green indicates segmented area
 
 def yolo2maskdir(kpimg,kptxt,kout):
     """
