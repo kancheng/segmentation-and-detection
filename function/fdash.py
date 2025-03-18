@@ -51,10 +51,6 @@ def read_txt_labels(txt_file):
         for line in f.readlines():
             label_data = line.strip().split(" ")
             class_id = int(label_data[0])
-            # if int(label_data[0]) == 0:
-            #     continue
-            # elif int(label_data[0]) != 0:
-            #     class_id = int(label_data[0])
             # Parsing bounding box coordinates
             coordinates = [float(x) for x in label_data[1:]]
             labels.append([class_id, coordinates])
@@ -68,102 +64,69 @@ def draw_labels(image, labels):
     """
     for label in labels:
         class_id, coordinates = label
-        # Convert coordinates to integers and reshape into polygons
+        # 將座標轉換為整數並組成多邊形座標點
         points = [(int(x * image.shape[1]), int(y * image.shape[0])) for x, y in zip(coordinates[::2], coordinates[1::2])]
-        # Draw outlines using polygons
-        cv2.polylines(image, [np.array(points)], True, (0, 255, 0), 2) # Red indicates the segmentation area outline
+        # 使用多邊形繪製分割區域輪廓 (綠色線條)
+        cv2.polylines(image, [np.array(points)], True, (0, 255, 0), 2)
 
 def yolo2imagesbase64(pimg, ptxt):
     """
     Restore the YOLO semantic segmentation txt annotation file to the original image
     """
-    # Reading an Image
-    # image = cv2.imread("./test/coco128.jpg")
     image = cv2.imread(pimg)
-    # Read txt annotation file
-    # txt_file = "./test/coco128.txt"
     height, width, _  = image.shape
-    txt_file = ptxt
-    labels = read_txt_labels(txt_file)
-    # Draw segmentation area
+    labels = read_txt_labels(ptxt)
     draw_labels(image, labels)
-    # Get the window size
-    window_size = (width//2, height//2) # You can resize the window as needed
-    # Resize an image
+    window_size = (width//2, height//2)
     image = cv2.resize(image, window_size)
-    # Create a black image the same size as the window
     background = np.zeros((window_size[1], window_size[0], 3), np.uint8)
-    # Place the image in the center of the black background
     image_x = int((window_size[0] - image.shape[1]) / 2)
     image_y = int((window_size[1] - image.shape[0]) / 2)
     background[image_y:image_y + image.shape[0], image_x:image_x + image.shape[1]] = image
-    # Using cv2.imwrite() method
-    # Saving the image
     return image
 
 def compress_images(input_dir, output_dir, quality=85):
     """
     Compress all images in the input directory and save them to the output directory.
-    Parameters:
-    input_dir (str): The path to the input directory.
-    output_dir (str): Path to the output directory.
-    quality (int): The quality of compression, ranging from 0 to 100. The higher the value, the better the quality.
     """
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-
     for filename in os.listdir(input_dir):
         if filename.lower().endswith(allowed_img_exts):
             input_path = os.path.join(input_dir, filename)
             output_path = os.path.join(output_dir, filename)
-            
-            # Open picture
             img = Image.open(input_path)
-            # The length and width are reduced to 25%
             width, height = img.size
             new_size = (width//4, height//4)
             resized_image = img.resize(new_size)
-            # Save
             resized_image.save(output_path, quality=quality)
-            
             print(f'{filename} compressed and saved to {output_dir}')
 
 def yolo2images(pimg, ptxt, out):
     """
     Restore the YOLO semantic segmentation txt annotation file to the original image
     """
-    # Reading an Image
-    # image = cv2.imread("./test/coco128.jpg")
     image = cv2.imread(pimg)
-    # Read txt annotation file
-    # txt_file = "./test/coco128.txt"
     height, width, _  = image.shape
-    txt_file = ptxt
-    labels = read_txt_labels(txt_file)
-    # Draw segmentation area
+    labels = read_txt_labels(ptxt)
     draw_labels(image, labels)
-    # Get the window size
-    # window_size = (width//2, height//2) # You can resize the window as needed
-    window_size = (width, height) # You can resize the window as needed
-    # Resize an image
+    window_size = (width, height)
     image = cv2.resize(image, window_size)
-    # Create a black image the same size as the window
     background = np.zeros((window_size[1], window_size[0], 3), np.uint8)
-    # Place the image in the center of the black background
     image_x = int((window_size[0] - image.shape[1]) / 2)
     image_y = int((window_size[1] - image.shape[0]) / 2)
     background[image_y:image_y + image.shape[0], image_x:image_x + image.shape[1]] = image
+    cv2.imwrite(out, image)
 
-    # Filename
-    # filename = 'savedImage.jpg'
-    filename = out
-
-    # Using cv2.imwrite() method
-    # Saving the image
-    cv2.imwrite(filename, image)
 
 def report_function_d(ymal_path, original_image, predict_folder, train_folder, html_path, pout):
-    # 將傳入的 Path 物件與字串組合時，使用 '/' 運算子
+    # 將傳入的目錄參數轉換為 Path 物件，避免使用 '/' 運算子時發生錯誤
+    train_folder = Path(train_folder)
+    original_image = Path(original_image)
+    predict_folder = Path(predict_folder)
+    pout = Path(pout)
+
+    # 使用 Path 物件進行路徑組合
     predict_folder_labels = predict_folder / "labels"
     up_ymal_path = Path(ymal_path).parent
     up_ymal_path_key = up_ymal_path / "mes.json"
@@ -173,11 +136,12 @@ def report_function_d(ymal_path, original_image, predict_folder, train_folder, h
     rawdir = pout / "raw"
     resdir = pout / "res"
 
-    if not os.path.exists(pout):
+    if not pout.exists():
         os.makedirs(rawdir)
         os.makedirs(resdir)
+
     '''
-    Read txt annotation files and original images
+    讀取 txt 標註檔與原始圖片
     '''
     ytxt = []
     yimg = []
@@ -187,7 +151,6 @@ def report_function_d(ymal_path, original_image, predict_folder, train_folder, h
     for filename in os.listdir(up_ymal_path_img_t):
         if filename.lower().endswith(allowed_img_exts):
             yimg.append(up_ymal_path_img_t / filename)
-            
     for filename in os.listdir(up_ymal_path_img_v):
         if filename.lower().endswith(allowed_img_exts):
             yimg.append(up_ymal_path_img_v / filename)
@@ -195,33 +158,34 @@ def report_function_d(ymal_path, original_image, predict_folder, train_folder, h
     up_ymal_path_txt_t = ptxt / "train"
     up_ymal_path_txt_v = ptxt / "val"
     for filename in os.listdir(up_ymal_path_txt_t):
-        if filename.endswith((".txt")):
+        if filename.endswith(".txt"):
             ytxt.append(up_ymal_path_txt_t / filename)
-
     for filename in os.listdir(up_ymal_path_txt_v):
-        if filename.endswith((".txt")):
+        if filename.endswith(".txt"):
             ytxt.append(up_ymal_path_txt_v / filename)
+
     temd = []
     for i in range(len(ytxt)):
-        shutil.copyfile(ytxt[i], rawdir / Path(ytxt[i]).name)
+        shutil.copyfile(ytxt[i], str(rawdir / Path(ytxt[i]).name))
         tname = Path(ytxt[i]).stem
         temd.append(tname)
 
     for i in range(len(yimg)):
-        shutil.copyfile(yimg[i], rawdir / Path(yimg[i]).name)
+        shutil.copyfile(yimg[i], str(rawdir / Path(yimg[i]).name))
 
     # 針對 rawdir 中的圖片，依據 label 的 stem 找出實際的副檔名
     for filename in temd:
         simg = None
         for ext in allowed_img_exts:
-            candidate = rawdir / (filename + ext)
+            candidate = Path(rawdir) / (filename + ext)
             if candidate.exists():
                 simg = candidate
                 break
         if simg is None:
             continue
-        stxt = rawdir / (filename + ".txt")
-        sout = resdir / (filename + simg.suffix)
+        stxt = Path(rawdir) / (filename + ".txt")
+        # 修正：將輸出路徑改為 resdir，而非 rawdir
+        sout = Path(resdir) / (filename + simg.suffix)
         yolo2images(pimg=str(simg), ptxt=str(stxt), out=str(sout))
     # time
     st = time.strftime("%Y.%m.%d", time.localtime())
@@ -421,17 +385,17 @@ def report_function_d(ymal_path, original_image, predict_folder, train_folder, h
 # pout = "./yolo_runs_.../yolo2images"
 # report_function_d(ymal_path, original_image, predict_folder, train_folder, html_path, pout)
 
-# 統一基本路徑
-base_report_path = Path("D:/report-hand-yolo/default_data")
-base_yolo_path = Path("D:/YOLO_250101_TEM/yolo_runs_yolo11n-seg_dl_20250101")
+# # 統一基本路徑
+# base_report_path = Path("D:/report-hand-yolo/default_data")
+# base_yolo_path = Path("D:/YOLO_250101_TEM/yolo_runs_yolo11n-seg_dl_20250101")
 
-# 定義各個路徑
-yaml_path = base_report_path / "dataset_yolo" / "dataset.yaml"
-original_image_dir = base_report_path / "dataset_predict"
-predict_dir = base_yolo_path / "segment" / "predict"
-train_dir = base_yolo_path / "segment" / "train"
-html_file = base_yolo_path / "segment" / "index.html"
-pout_dir = base_yolo_path / "segment" / "yolo2images"
+# # 定義各個路徑
+# yaml_path = base_report_path / "dataset_yolo" / "dataset.yaml"
+# original_image_dir = base_report_path / "dataset_predict"
+# predict_dir = base_yolo_path / "segment" / "predict"
+# train_dir = base_yolo_path / "segment" / "train"
+# html_file = base_yolo_path / "segment" / "index.html"
+# pout_dir = base_yolo_path / "segment" / "yolo2images"
 
-# 呼叫報告函數
-report_function_d(yaml_path, original_image_dir, predict_dir, train_dir, html_file, pout_dir)
+# # 呼叫報告函數
+# report_function_d(yaml_path, original_image_dir, predict_dir, train_dir, html_file, pout_dir)
