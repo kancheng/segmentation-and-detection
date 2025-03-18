@@ -8,7 +8,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--pp', default=None, help='The predict path')
 parser.add_argument('--gdp', default=None, help='The ground truth path')
-parser.add_argument('--num_classes', type=int, default=2, help='Number of classes for Dice calculation (including background)')
+parser.add_argument('--num_classes', type=int, default=1, help='Number of classes for Dice calculation (including background)')
 args = parser.parse_args()
 
 # 检查是否提供了路径

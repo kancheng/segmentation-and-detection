@@ -18,6 +18,7 @@ parser.add_argument('--name', default='dl',  help='project name')
 parser.add_argument('--epochs', default=50,  help='epochs')
 parser.add_argument('--batch', default=2,  help='batch')
 parser.add_argument('--models', default='yolo11n-seg',  help='models name')
+parser.add_argument('--num_classes', type=int, default=1, help='Number of classes for Dice calculation (including background)')
 args = parser.parse_args()
 
 # Settings Path.
@@ -26,7 +27,8 @@ input_datasets_yaml_path = args.input_datasets_yaml_path
 # predict_datasets_folder = '/mnt/ ... /'
 predict_datasets_folder = args.predict_datasets_folder
 
-# # Update a setting
+num_classes = args.num_classes  # 类别数量，默认为 2
+# Update a setting
 # datasets_dir = os.path.abspath(os.path.dirname(input_datasets_yaml_path))
 # print(datasets_dir)
 # settings.update({"datasets_dir": datasets_dir})
@@ -157,8 +159,11 @@ def draw_labels(mask, labels):
         class_id, coordinates = label
         # Convert coordinates to integers and reshape into polygons
         points = [(int(x * mask.shape[1]), int(y * mask.shape[0])) for x, y in zip(coordinates[::2], coordinates[1::2])]
-        # Use polygon fill
-        cv2.fillPoly(mask, [np.array(points)], (255, 255, 255)) # Green indicates segmented area
+        # 若點數小於3則不執行填充，以避免 cv2.fillPoly 斷言失敗
+        if len(points) >= 3:
+            pts = np.array(points, dtype=np.int32).reshape((-1, 1, 2))
+            # Use polygon fill
+            cv2.fillPoly(mask, [pts], (255, 255, 255)) # Green indicates segmented area
 
 def yolo2maskdir(kpimg,kptxt,kout):
     """
@@ -322,8 +327,8 @@ def calculate_miou(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png'
 # 使用範例
 predict_path = output_mask_dir  # 預測結果的路徑
 # predict_path = './datasets/default_data/dataset_masks/masks'  # 預測結果的路徑
-ground_truth_path = './datasets/default_data2/dataset_masks2/masks'  # Ground Truth 的路徑
-
+# ground_truth_path = './datasets/default_data/dataset_mask/masks'  # Ground Truth 的路徑
+ground_truth_path = predict_datasets_folder
 miou_value = calculate_miou(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png')
 tem_miou_value = "Mean IoU: " + str(miou_value)
 print(f'Mean IoU: {miou_value:.4f}')
@@ -333,5 +338,84 @@ res_file_path = os.path.dirname(str(results_yseg.save_dir)) + "/result.txt"
 with open(res_file_path, 'w', encoding='utf-8') as file:
     # 寫入內容
     file.write(tem_miou_value)
+
+print(f"檔案 '{res_file_path}' 已建立並寫入成功。")
+
+# mDisc
+
+def dice_coef(pred, target, num_classes):
+    """
+    计算 Dice 系数
+    """
+    smooth = 1.0
+    dice = 0.0
+    for cls in range(num_classes):
+        # 将 NumPy 数组转换为 float 类型
+        pred_cls = (pred == cls).astype(np.float32)
+        target_cls = (target == cls).astype(np.float32)
+        
+        # 计算交集与并集
+        intersection = (pred_cls * target_cls).sum()
+        union = pred_cls.sum() + target_cls.sum()
+        
+        # 更新 Dice 系数
+        dice += (2. * intersection + smooth) / (union + smooth)
+    
+    return dice / num_classes
+
+def calculate_mdice(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png', num_classes=2):
+    """
+    计算多张预测结果和多张 Ground Truth 的 mDice，处理附档名不同的情况
+    """
+    predict_files = sorted(os.listdir(predict_dir))
+    print("predict_files", predict_files)
+    ground_truth_files = sorted(os.listdir(ground_truth_dir))
+    print("ground_truth_files", ground_truth_files)
+    dice_list = []
+
+    # 遍历所有的 Ground Truth 文件
+    for gt_file in ground_truth_files:
+        gt_path = os.path.join(ground_truth_dir, gt_file)
+        print("gt_path", gt_path)
+        # 尝试找到对应的预测文件，假设文件名一致，但附档名不同
+        pred_file = os.path.splitext(gt_file)[0] + pred_ext  # 使用 Ground Truth 文件名并修改为预测图像的附档名
+        pred_path = os.path.join(predict_dir, pred_file)
+        print("pred_path", pred_path)
+        
+        if os.path.exists(pred_path):
+            # 读取预测和真实标签图像
+            pred_img = cv2.imread(pred_path, cv2.IMREAD_GRAYSCALE)
+            gt_img = cv2.imread(gt_path, cv2.IMREAD_GRAYSCALE)
+
+            # 确保预测和真实标签图像的尺寸一致
+            if pred_img.shape != gt_img.shape:
+                print(f"Warning: Image sizes do not match for {gt_file}, skipping...")
+                continue
+
+            # 计算 Dice
+            pred_img_bin = pred_img // 255  # 将预测图像转换为二值图
+            gt_img_bin = gt_img // 255  # 将真实标签图像转换为二值图
+
+            dice = dice_coef(pred_img_bin, gt_img_bin, num_classes)
+            dice_list.append(dice)
+        else:
+            print(f"Warning: No prediction file for Ground Truth {gt_file}, skipping...")
+
+    # 计算 mDice
+    if dice_list:
+        mdice = np.mean(dice_list)
+        return mdice
+    else:
+        print("No valid predictions found.")
+        return 0
+
+mdice_value = calculate_mdice(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png', num_classes=num_classes)
+tem_mdice_value = "Mean Dice: " + str(mdice_value)
+print(f'Mean Dice: {mdice_value:.4f}')
+
+# 開啟檔案，如果檔案不存在會自動創建
+with open(res_file_path, 'w', encoding='utf-8') as file:
+    # 寫入內容
+    file.write(tem_mdice_value)
 
 print(f"檔案 '{res_file_path}' 已建立並寫入成功。")
