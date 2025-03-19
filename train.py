@@ -16,7 +16,6 @@ from tqdm import tqdm
 import wandb
 from evaluate import evaluate
 from unet import UNET
-from unet import U2NET
 from utils.data_loading import BasicDataset, CarvanaDataset
 from utils.dice_score import dice_loss
 
@@ -27,7 +26,6 @@ dir_checkpoint = Path('./checkpoints/')
 
 def train_model(
         model,
-        model_name,
         device,
         epochs: int = 5,
         batch_size: int = 1,
@@ -53,9 +51,18 @@ def train_model(
     train_set, val_set = random_split(dataset, [n_train, n_val], generator=torch.Generator().manual_seed(0))
 
     # 3. Create data loaders
-    loader_args = dict(batch_size=batch_size, num_workers=os.cpu_count(), pin_memory=True)
-    train_loader = DataLoader(train_set, shuffle=True, **loader_args)
-    val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+    num_workers = args.workers if args.workers is not None else min(4, os.cpu_count() or 1)
+    loader_args = dict(batch_size=batch_size, num_workers=num_workers, pin_memory=True)
+    
+    try:
+        train_loader = DataLoader(train_set, shuffle=True, **loader_args)
+        val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+    except Exception as e:
+        logging.error(f"Error creating data loaders: {str(e)}")
+        # Fallback to single worker if multiple workers fail
+        loader_args['num_workers'] = 0
+        train_loader = DataLoader(train_set, shuffle=True, **loader_args)
+        val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
 
     # (Initialize logging)
     experiment = None
@@ -154,41 +161,43 @@ def train_model(
                 division_step = (n_train // (5 * batch_size))
                 if division_step > 0:
                     if global_step % division_step == 0:
-                        histograms = {}
-                        for tag, value in model.named_parameters():
-                            tag = tag.replace('/', '.')
+                        try:
+                            val_score = evaluate(model, val_loader, device, amp, model.n_classes)
+                            scheduler.step(val_score)
+                            logging.info('Validation Dice score: {}'.format(val_score))
+                            
                             if args.wandb == True :
-                                if not (torch.isinf(value) | torch.isnan(value)).any():
-                                    histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                                if not (torch.isinf(value.grad) | torch.isnan(value.grad)).any():
-                                    histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
+                                histograms = {}
+                                for tag, value in model.named_parameters():
+                                    tag = tag.replace('/', '.')
+                                    if not (torch.isinf(value) | torch.isnan(value)).any():
+                                        histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
+                                    if not (torch.isinf(value.grad) | torch.isnan(value.grad)).any():
+                                        histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
-                        val_score = evaluate(model, val_loader, device, amp, model.n_classes)
-                        scheduler.step(val_score)
-
-                        logging.info('Validation Dice score: {}'.format(val_score))
-                        if args.wandb == True :
-                            try:
                                 experiment.log({
                                     'learning rate': optimizer.param_groups[0]['lr'],
                                     'validation Dice': val_score,
                                     'images': wandb.Image(images[0].cpu()),
                                     'masks': {
                                         'true': wandb.Image(true_masks[0].float().cpu()),
-                                        'pred': wandb.Image(masks_pred.argmax(dim=1)[0].float().cpu()),
+                                        'pred': wandb.Image(outputs.argmax(dim=1)[0].float().cpu()),
                                     },
                                     'step': global_step,
                                     'epoch': epoch,
                                     **histograms
                                 })
-                            except:
-                                pass
+                        except Exception as e:
+                            logging.error(f"Error during validation: {str(e)}")
+                            # Optionally recreate the validation loader
+                            val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
+                            continue
 
         if save_checkpoint:
             Path(dir_checkpoint).mkdir(parents=True, exist_ok=True)
             state_dict = model.state_dict()
             state_dict['mask_values'] = dataset.mask_values
-            torch.save(state_dict, str(dir_checkpoint / f'{model_name}_checkpoint_epoch{epoch}.pth'))
+            torch.save(state_dict, str(dir_checkpoint / f'unet_checkpoint_epoch{epoch}.pth'))
             logging.info(f'Checkpoint {epoch} saved!')
 
 
@@ -205,8 +214,8 @@ def get_args():
     parser.add_argument('--amp', action='store_true', default=False, help='Use mixed precision')
     parser.add_argument('--bilinear', action='store_true', default=False, help='Use bilinear upsampling')
     parser.add_argument('--classes', '-c', type=int, default=1, help='Number of classes')
-    parser.add_argument('--model', '-m', type=str, default='unet', help='Model to use')
     parser.add_argument('--wandb', action='store_true', default=False, help='是否啟用 Weights & Biases 日誌紀錄 (預設不啟用)')
+    parser.add_argument('--workers', type=int, default=None, help='Number of worker processes for data loading')
     return parser.parse_args()
 
 if __name__ == '__main__':
@@ -221,10 +230,7 @@ if __name__ == '__main__':
     # n_classes is the number of probabilities you want to get per pixel
 
     # build model
-    if args.model == 'unet' :
-        model = UNET(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    elif args.model == 'u2net' :
-        model = U2NET(n_channels=3, n_classes=args.classes)
+    model = UNET(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
     model = model.to(memory_format=torch.channels_last)
 
     logging.info(f'Network:\n'
@@ -242,7 +248,6 @@ if __name__ == '__main__':
     try:
         train_model(
             model=model,
-            model_name=args.model,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
@@ -260,7 +265,6 @@ if __name__ == '__main__':
         model.use_checkpointing()
         train_model(
             model=model,
-            model_name=args.model,
             epochs=args.epochs,
             batch_size=args.batch_size,
             learning_rate=args.lr,
