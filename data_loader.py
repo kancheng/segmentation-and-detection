@@ -134,91 +134,96 @@ class ToTensor(object):
 		return {'imidx':torch.from_numpy(imidx), 'image': torch.from_numpy(tmpImg), 'label': torch.from_numpy(tmpLbl)}
 
 class ToTensorLab(object):
-	"""Convert ndarrays in sample to Tensors."""
-	def __init__(self,flag=0):
-		self.flag = flag
+    """Convert ndarrays in sample to Tensors."""
+    def __init__(self, flag=0):
+        self.flag = flag
 
-	def __call__(self, sample):
+    def __call__(self, sample):
 
-		imidx, image, label =sample['imidx'], sample['image'], sample['label']
+        imidx, image, label = sample['imidx'], sample['image'], sample['label']
 
-		tmpLbl = np.zeros(label.shape)
+        tmpLbl = np.zeros(label.shape)
 
-		if(np.max(label)<1e-6):
-			label = label
-		else:
-			label = label/np.max(label)
+        # 處理 label，避免除以 0
+        max_label = np.max(label)
+        if max_label < 1e-6:
+            label = label
+        else:
+            label = label / max_label
 
-		# change the color space
-		if self.flag == 2: # with rgb and Lab colors
-			tmpImg = np.zeros((image.shape[0],image.shape[1],6))
-			tmpImgt = np.zeros((image.shape[0],image.shape[1],3))
-			if image.shape[2]==1:
-				tmpImgt[:,:,0] = image[:,:,0]
-				tmpImgt[:,:,1] = image[:,:,0]
-				tmpImgt[:,:,2] = image[:,:,0]
-			else:
-				tmpImgt = image
-			tmpImgtl = color.rgb2lab(tmpImgt)
+        # change the color space
+        if self.flag == 2:  # with rgb and Lab colors
+            tmpImg = np.zeros((image.shape[0], image.shape[1], 6))
+            tmpImgt = np.zeros((image.shape[0], image.shape[1], 3))
+            if image.shape[2] == 1:
+                tmpImgt[:, :, 0] = image[:, :, 0]
+                tmpImgt[:, :, 1] = image[:, :, 0]
+                tmpImgt[:, :, 2] = image[:, :, 0]
+            else:
+                tmpImgt = image
+            tmpImgtl = color.rgb2lab(tmpImgt)
 
-			# nomalize image to range [0,1]
-			tmpImg[:,:,0] = (tmpImgt[:,:,0]-np.min(tmpImgt[:,:,0]))/(np.max(tmpImgt[:,:,0])-np.min(tmpImgt[:,:,0]))
-			tmpImg[:,:,1] = (tmpImgt[:,:,1]-np.min(tmpImgt[:,:,1]))/(np.max(tmpImgt[:,:,1])-np.min(tmpImgt[:,:,1]))
-			tmpImg[:,:,2] = (tmpImgt[:,:,2]-np.min(tmpImgt[:,:,2]))/(np.max(tmpImgt[:,:,2])-np.min(tmpImgt[:,:,2]))
-			tmpImg[:,:,3] = (tmpImgtl[:,:,0]-np.min(tmpImgtl[:,:,0]))/(np.max(tmpImgtl[:,:,0])-np.min(tmpImgtl[:,:,0]))
-			tmpImg[:,:,4] = (tmpImgtl[:,:,1]-np.min(tmpImgtl[:,:,1]))/(np.max(tmpImgtl[:,:,1])-np.min(tmpImgtl[:,:,1]))
-			tmpImg[:,:,5] = (tmpImgtl[:,:,2]-np.min(tmpImgtl[:,:,2]))/(np.max(tmpImgtl[:,:,2])-np.min(tmpImgtl[:,:,2]))
+            # normalize each channel to range [0,1]
+            for ch in range(3):
+                denom = np.max(tmpImgt[:, :, ch]) - np.min(tmpImgt[:, :, ch])
+                if denom != 0:
+                    tmpImg[:, :, ch] = (tmpImgt[:, :, ch] - np.min(tmpImgt[:, :, ch])) / denom
+                else:
+                    tmpImg[:, :, ch] = tmpImgt[:, :, ch]
+            for ch in range(3):
+                denom = np.max(tmpImgtl[:, :, ch]) - np.min(tmpImgtl[:, :, ch])
+                if denom != 0:
+                    tmpImg[:, :, ch+3] = (tmpImgtl[:, :, ch] - np.min(tmpImgtl[:, :, ch])) / denom
+                else:
+                    tmpImg[:, :, ch+3] = tmpImgtl[:, :, ch]
 
-			# tmpImg = tmpImg/(np.max(tmpImg)-np.min(tmpImg))
+            # 標準化各通道
+            for ch in range(6):
+                tmpImg[:, :, ch] = (tmpImg[:, :, ch] - np.mean(tmpImg[:, :, ch])) / np.std(tmpImg[:, :, ch])
 
-			tmpImg[:,:,0] = (tmpImg[:,:,0]-np.mean(tmpImg[:,:,0]))/np.std(tmpImg[:,:,0])
-			tmpImg[:,:,1] = (tmpImg[:,:,1]-np.mean(tmpImg[:,:,1]))/np.std(tmpImg[:,:,1])
-			tmpImg[:,:,2] = (tmpImg[:,:,2]-np.mean(tmpImg[:,:,2]))/np.std(tmpImg[:,:,2])
-			tmpImg[:,:,3] = (tmpImg[:,:,3]-np.mean(tmpImg[:,:,3]))/np.std(tmpImg[:,:,3])
-			tmpImg[:,:,4] = (tmpImg[:,:,4]-np.mean(tmpImg[:,:,4]))/np.std(tmpImg[:,:,4])
-			tmpImg[:,:,5] = (tmpImg[:,:,5]-np.mean(tmpImg[:,:,5]))/np.std(tmpImg[:,:,5])
+        elif self.flag == 1:  # with Lab color
+            tmpImg = np.zeros((image.shape[0], image.shape[1], 3))
+            if image.shape[2] == 1:
+                tmpImg[:, :, 0] = image[:, :, 0]
+                tmpImg[:, :, 1] = image[:, :, 0]
+                tmpImg[:, :, 2] = image[:, :, 0]
+            else:
+                tmpImg = image
 
-		elif self.flag == 1: #with Lab color
-			tmpImg = np.zeros((image.shape[0],image.shape[1],3))
+            tmpImg = color.rgb2lab(tmpImg)
+            for ch in range(3):
+                denom = np.max(tmpImg[:, :, ch]) - np.min(tmpImg[:, :, ch])
+                if denom != 0:
+                    tmpImg[:, :, ch] = (tmpImg[:, :, ch] - np.min(tmpImg[:, :, ch])) / denom
+                else:
+                    tmpImg[:, :, ch] = tmpImg[:, :, ch]
+                tmpImg[:, :, ch] = (tmpImg[:, :, ch] - np.mean(tmpImg[:, :, ch])) / np.std(tmpImg[:, :, ch])
+        else:  # with rgb color
+            tmpImg = np.zeros((image.shape[0], image.shape[1], 3))
+            max_val = np.max(image)
+            if max_val > 0:
+                image = image / max_val
+            # 若圖像為灰階，則複製至三個通道
+            if image.shape[2] == 1:
+                tmpImg[:, :, 0] = (image[:, :, 0] - 0.485) / 0.229
+                tmpImg[:, :, 1] = (image[:, :, 0] - 0.485) / 0.229
+                tmpImg[:, :, 2] = (image[:, :, 0] - 0.485) / 0.229
+            else:
+                tmpImg[:, :, 0] = (image[:, :, 0] - 0.485) / 0.229
+                tmpImg[:, :, 1] = (image[:, :, 1] - 0.456) / 0.224
+                tmpImg[:, :, 2] = (image[:, :, 2] - 0.406) / 0.225
 
-			if image.shape[2]==1:
-				tmpImg[:,:,0] = image[:,:,0]
-				tmpImg[:,:,1] = image[:,:,0]
-				tmpImg[:,:,2] = image[:,:,0]
-			else:
-				tmpImg = image
+        tmpLbl[:, :, 0] = label[:, :, 0]
 
-			tmpImg = color.rgb2lab(tmpImg)
+        # 轉置數據格式並確保陣列內存連續
+        tmpImg = np.ascontiguousarray(tmpImg.transpose((2, 0, 1)))
+        tmpLbl = np.ascontiguousarray(label.transpose((2, 0, 1)))
 
-			# tmpImg = tmpImg/(np.max(tmpImg)-np.min(tmpImg))
-
-			tmpImg[:,:,0] = (tmpImg[:,:,0]-np.min(tmpImg[:,:,0]))/(np.max(tmpImg[:,:,0])-np.min(tmpImg[:,:,0]))
-			tmpImg[:,:,1] = (tmpImg[:,:,1]-np.min(tmpImg[:,:,1]))/(np.max(tmpImg[:,:,1])-np.min(tmpImg[:,:,1]))
-			tmpImg[:,:,2] = (tmpImg[:,:,2]-np.min(tmpImg[:,:,2]))/(np.max(tmpImg[:,:,2])-np.min(tmpImg[:,:,2]))
-
-			tmpImg[:,:,0] = (tmpImg[:,:,0]-np.mean(tmpImg[:,:,0]))/np.std(tmpImg[:,:,0])
-			tmpImg[:,:,1] = (tmpImg[:,:,1]-np.mean(tmpImg[:,:,1]))/np.std(tmpImg[:,:,1])
-			tmpImg[:,:,2] = (tmpImg[:,:,2]-np.mean(tmpImg[:,:,2]))/np.std(tmpImg[:,:,2])
-
-		else: # with rgb color
-			tmpImg = np.zeros((image.shape[0],image.shape[1],3))
-			image = image/np.max(image)
-			if image.shape[2]==1:
-				tmpImg[:,:,0] = (image[:,:,0]-0.485)/0.229
-				tmpImg[:,:,1] = (image[:,:,0]-0.485)/0.229
-				tmpImg[:,:,2] = (image[:,:,0]-0.485)/0.229
-			else:
-				tmpImg[:,:,0] = (image[:,:,0]-0.485)/0.229
-				tmpImg[:,:,1] = (image[:,:,1]-0.456)/0.224
-				tmpImg[:,:,2] = (image[:,:,2]-0.406)/0.225
-
-		tmpLbl[:,:,0] = label[:,:,0]
+        return {'imidx': torch.from_numpy(np.ascontiguousarray(imidx)),
+                'image': torch.from_numpy(tmpImg),
+                'label': torch.from_numpy(tmpLbl)}
 
 
-		tmpImg = tmpImg.transpose((2, 0, 1))
-		tmpLbl = label.transpose((2, 0, 1))
-
-		return {'imidx':torch.from_numpy(imidx), 'image': torch.from_numpy(tmpImg), 'label': torch.from_numpy(tmpLbl)}
 
 class SalObjDataset(Dataset):
 	def __init__(self,img_name_list,lbl_name_list,transform=None):

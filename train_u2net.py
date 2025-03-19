@@ -14,19 +14,13 @@ import numpy as np
 import glob
 import os
 
-from data_loader import Rescale
-from data_loader import RescaleT
-from data_loader import RandomCrop
-from data_loader import ToTensor
-from data_loader import ToTensorLab
-from data_loader import SalObjDataset
-
-from u2net import U2NET
-from u2net import U2NETP
+from data_loader import Rescale, RescaleT, RandomCrop, ToTensorLab, SalObjDataset
+from u2net import U2NET, U2NETP
 
 # ------- 1. define loss function --------
 
-bce_loss = nn.BCELoss(size_average=True)
+# 修改 BCELoss 初始化參數，避免警告
+bce_loss = nn.BCELoss(reduction='mean')
 
 def muti_bce_loss_fusion(d0, d1, d2, d3, d4, d5, d6, labels_v):
     loss0 = bce_loss(d0, labels_v)
@@ -65,7 +59,8 @@ if not os.path.exists(model_dir):
     os.makedirs(model_dir)
     print(f"已创建目录：{model_dir}")
 
-epoch_num = 2000
+# epoch_num = 2000
+epoch_num = 40
 batch_size_train = 12
 batch_size_val = 1
 train_num = 0
@@ -92,13 +87,20 @@ print("---")
 
 train_num = len(tra_img_name_list)
 
+# 定義一個全局函數來替代 lambda，將 label 轉換為 FloatTensor
+def convert_label_to_float(sample):
+    sample['label'] = sample['label'].float()
+    return sample
+
 salobj_dataset = SalObjDataset(
     img_name_list=tra_img_name_list,
     lbl_name_list=tra_lbl_name_list,
     transform=transforms.Compose([
         RescaleT(320),
         RandomCrop(288),
-        ToTensorLab(flag=0)
+        ToTensorLab(flag=0),
+        # 使用全局函數轉換 label 型態
+        convert_label_to_float
     ])
 )
 salobj_dataloader = DataLoader(salobj_dataset, batch_size=batch_size_train, shuffle=True, num_workers=1)
@@ -125,7 +127,8 @@ ite_num = 0
 running_loss = 0.0
 running_tar_loss = 0.0
 ite_num4val = 0
-save_frq = 200
+# save_frq = 200
+save_frq = 4
 
 def main():
     global ite_num, running_loss, running_tar_loss, ite_num4val
@@ -134,7 +137,8 @@ def main():
     running_loss = 0.0
     running_tar_loss = 0.0
     ite_num4val = 0
-    save_frq = 2000
+    # save_frq = 2000
+    save_frq = 40
 
     for epoch in range(0, epoch_num):
         net.train()
