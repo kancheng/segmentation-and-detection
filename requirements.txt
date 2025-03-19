@@ -5,3 +5,12 @@ tqdm
 wandb
 ultralytics
 onnx
+scikit-image
+torch
+torchvision
+torchaudio
+pillow
+opencv-python
+paddlepaddle
+paddlehub
+gradio
