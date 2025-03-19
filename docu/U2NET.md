@@ -1,8 +1,5 @@
 <p align="center">
-  <img width="320" height="320" src="figures/U2Net_Logo.png">
-  
   <h1 align="center">U<sup>2</sup>-Net: U Square Net</h1>
-    
 </p>
 
 This is the official repo for our paper **U<sup>2</sup>-Net(U square net)** published in Pattern Recognition 2020:
