@@ -13,7 +13,6 @@ __Contact__: xuebin[at]ualberta[dot]ca
 ## Updates !!!
 
 ** (2022-Aug.-24) ** We are glad to announce that our U<sup>2</sup>-Net published in Pattern Recognition has been awarded the 2020 Pattern Recognition BEST PAPER AWARD !!!
-![u2net-best-paper](figures/u2net-best-paper.jpg)
 
 ** (2022-Aug.-17) **
 Our U<sup>2</sup>-Net models are now available on [PlayTorch](https://playtorch.dev/), where you can build your own demo and run it on your Android/iOS phone. Try out this demo on [![PlayTorch Demo](https://github.com/facebookresearch/playtorch/blob/main/website/static/assets/playtorch_badge.svg)](https://playtorch.dev/snack/@playtorch/u2net/) and bring your ideas about U<sup>2</sup>-Net to truth in minutes!
@@ -25,41 +24,26 @@ Our U<sup>2</sup>-Net models are now available on [PlayTorch](https://playtorch.
 ![motor-demo](figures/motor-demo.gif)
 
 ** (2022-Jun.-3)** Thank [**Adir Kol**](https://github.com/adirkol) for sharing the iOS App [**3D Photo Creator**](https://apps.apple.com/us/app/3d-photo-creator/id1619676262) based on our U<sup>2</sup>-Net.
-![portrait-ios-app](figures/3d-photo-re.jpg)
 
 ** (2022-Mar.-31)** Thank [**Hikaru Tsuyumine**] for implementing the iOS App [**Portrait Drawing**](https://apps.apple.com/us/app/portrait-drawing/id1623269600) based on our U<sup>2</sup>-Net portrait generation model.
-![portrait-ios-app](figures/portrait-ios-app.jpg)
 
 ** (2022-Apr.-12)** Thank [**Kevin Shah**](https://github.com/ioskevinshah) for providing us a great iOS App [**Lensto**](https://apps.apple.com/in/app/lensto-background-changer/id1574844033), ([**Demo Video**](https://www.youtube.com/shorts/jWwUiKZjfok)), based on U<sup>2</sup>-Net.
-![lensto](figures/lensto.png)
 
 ** (2022-Mar.-31)** Our U<sup>2</sup>-Net model is also integrated by [**Hotpot.ai**](https://hotpot.ai/) for art design.
-![hotpot](figures/hotpot.png)
 
 ** (2022-Mar-19)** Thank [**Kikedao**](https://github.com/Kikedao) for providing a fantastic webapp [**Silueta**](https://silueta.me/) based on U<sup>2</sup>-Net. More details can be found at [**https://github.com/xuebinqin/U-2-Net/issues/295**](https://github.com/xuebinqin/U-2-Net/issues/295).
-![silueta](figures/silueta.png) 
 
 ** (2022-Mar-17)** Thank [**Ezaldeen Sahb**](https://github.com/Ezaldeen99/BackgroundRemoval) for implementing the iOS library for image background removal based on U<sup>2</sup>-Net, which will greatly facilitate the developing of mobile apps.
-![close-seg](figures/swift-u2net.jpeg) 
-
-<!-- ** (2022-Mar-10)** Thank [**Doron Adler**](https://github.com/Norod/U-2-Net-StyleTransfer) for training the awesome style transfer U<sup>2</sup>-Net.
-![style-trans](figures/style-trans.JPG)  -->
 
 ** (2022-Mar-8)** Thank [**Levin Dabhi**](https://github.com/levindabhi/cloth-segmentation) for training the amazing clothes segmentation U<sup>2</sup>-Net.
-![close-seg](figures/close-seg.jpg) 
 
 ** (2022-Mar-3)** Thank [**Renato Violin**](https://github.com/renatoviolin/bg-remove-augment) for providing an awesome webapp for image background removal and replacement based on our U<sup>2</sup>-Net.
-![bg-rm-aug](figures/bg-rm-aug.gif) 
 
 **(2021-Dec-21)** This [**blog**](https://rockyshikoku.medium.com/u2net-to-coreml-machine-learning-segmentation-on-iphone-eac0c721d67b) clearly describes the way of converting U<sup>2</sup>-Net to [**CoreML**](https://github.com/john-rocky/CoreML-Models) and running it on iphone. 
 
 **(2021-Nov-28)** Interesting Sky Segmentation models developed by [**xiongzhu**](https://github.com/xiongzhu666/Sky-Segmentation-and-Post-processing) using U<sup>2</sup>-Net. 
 
-![im_sky_segmentation](figures/sky-seg.png)
-
 **(2021-Nov-28)** Awesome image editing app [**Pixelmator pro**](https://www.pixelmator.com/pro/) uses U<sup>2</sup>-Net as one of its background removal models. 
-
-![im_sky_segmentation](figures/pixelmator.jpg)
 
 **(2021-Aug-24)** We played a bit more about fusing the orignal image and the generated portraits to composite different styles. You can <br/> 
 (1) Download this repo by
@@ -73,28 +57,15 @@ python u2net_portrait_composite.py -s 20 -a 0.5
 ```
 ,where ``-s`` indicates the sigma of gaussian function for blurring the orignal image and ``-a`` denotes the alpha weights of the orignal image when fusing them. <br/>
 
-![im_portrait_composite](figures/im_composite.jpg)
-
 **(2021-July-16)** A new [background removal webapp](https://remove-background.net/) developed by Изатоп Василий. 
-
-![rm_bg](figures/rm_bg.JPG)
 
 **(2021-May-26)** Thank [**Dang Quoc Quy**](https://github.com/quyvsquy) for his [**Art Transfer APP**](https://play.google.com/store/apps/details?id=com.quyvsquy.arttransfer) built upon U<sup>2</sup>-Net.
 
-<!---![art_transfer](figures/art_transfer.JPG)--->
-
 **(2021-May-5)** Thank [**AK391**](https://github.com/AK391) for sharing his [**Gradio Web Demo of U<sup>2</sup>-Net**](https://gradio.app/hub/AK391/U-2-Net).
-
-![gradio_web_demo](figures/gradio_web_demo.jpg)
-
 
 **(2021-Apr-29)** Thanks [**Jonathan Benavides Vallejo**](https://www.linkedin.com/in/jonathanbv/) for releasing his App [**LensOCR: Extract Text & Image**](https://apps.apple.com/ch/app/lensocr-extract-text-image/id1549961729?l=en&mt=12), which uses U<sup>2</sup>-Net for extracting the image foreground.
 
-![LensOCR APP](figures/LensOCR.jpg)
-
 **(2021-Apr-18)** Thanks [**Andrea Scuderi**](https://www.linkedin.com/in/andreascuderi/) for releasing his App [**Clipping Camera**](https://apps.apple.com/us/app/clipping-camera/id1548192169?ign-mpt=uo%3D2), which is an U<sup>2</sup>-Net driven realtime camera app and "is able to detect relevant object from the scene and clip them to apply fancy filters". 
-
-![Clipping Camera APP](figures/clipping_camera.jpg)
 
 **(2021-Mar-17)** [**Dennis Bappert**](https://github.com/dennisbappert) re-trained the U<sup>2</sup>-Net model for [**human portrait matting**](https://github.com/dennisbappert/u-2-net-portrait). The results look very promising and he also provided the details of the training process and data generation(and augmentation) strategy, which are inspiring.
 
@@ -103,7 +74,6 @@ python u2net_portrait_composite.py -s 20 -a 0.5
 **(2021-Mar-02)** We found some other interesting applications of our U<sup>2</sup>-Net including [**MOJO CUT**](https://play.google.com/store/apps/details?id=com.innoria.magicut&hl=en_CA&gl=US), [**Real-Time Background Removal on Iphone**](https://www.linkedin.com/feed/update/urn:li:activity:6752303661705170944/?updateEntityUrn=urn%3Ali%3Afs_feedUpdate%3A%28V2%2Curn%3Ali%3Aactivity%3A6752303661705170944%29), [**Video Background Removal**](https://nisargkapkar.hashnode.dev/image-and-video-background-removal-using-deep-learning), [**Another Online Portrait Generation Demo on AWS**](http://s3-website-hosting-u2net.s3-website-eu-west-1.amazonaws.com/), [**AI Scissor**](https://qooba.net/2020/09/11/ai-scissors-sharp-cut-with-neural-networks/).
 
 **(2021-Feb-15)** We just released an online demo [**http://profu.ai**](http://profu.ai) for the portrait generation. Please feel free to give it a try and provide any suggestions or comments. <br/>
-![Profuai](figures/profuai.png) <br/>
 
 **(2021-Feb-06)** Recently, some people asked the problem of using U<sup>2</sup>-Net for human segmentation, so we trained another example model for human segemntation based on [**Supervisely Person Dataset**](https://supervise.ly/explore/projects/supervisely-person-dataset-23304/datasets). <br/>
 
@@ -112,23 +82,12 @@ python u2net_portrait_composite.py -s 20 -a 0.5
 (3) Run the inference by command: ```python u2net_human_seg_test.py``` and the results will be output into the corresponding dirctory, e.g. ```./test_data/u2net_test_human_images_results/```<br/>
 [**Notes: Due to the labeling accuracy of the Supervisely Person Dataset, the human segmentation model (u2net_human_seg.pth) here won't give you hair-level accuracy. But it should be more robust than u2net trained with DUTS-TR dataset on general human segmentation task. It can be used for human portrait segmentation, human body segmentation, etc.**](https://github.com/NathanUA/U-2-Net)<br/>
 
-![Human Image Segmentation](figures/human_seg.png) <br/>
-![Human Video](figures/human_seg_video.gif)
-![Human Video Results](figures/human_seg_results.gif)
-
 **(2020-Dec-28)** Some interesting applications and useful tools based on U<sup>2</sup>-Net: <br/>
 (1) [**Xiaolong Liu**](https://github.com/LiuXiaolong19920720) developed several very interesting applications based on U<sup>2</sup>-Net including [**Human Portrait Drawing**](https://www.cvpy.net/studio/cv/func/DeepLearning/sketch/sketch/page/)(As far as I know, Xiaolong is the first one who uses U<sup>2</sup>-Net for portrait generation), [**image matting**](https://www.cvpy.net/studio/cv/func/DeepLearning/matting/matting/page/) and [**so on**](https://www.cvpy.net/). <br/>
 (2) [**Vladimir Seregin**](https://github.com/peko/nn-lineart) developed an interesting tool, [**NN based lineart**](https://peko.github.io/nn-lineart/), for comparing the portrait results of U<sup>2</sup>-Net and that of another popular model, [**ArtLine**](https://github.com/vijishmadhavan/ArtLine), developed by [**Vijish Madhavan**](https://github.com/vijishmadhavan). <br/>
 (3) [**Daniel Gatis**](https://github.com/danielgatis/rembg) built a python tool, [**Rembg**](https://pypi.org/project/rembg/), for image backgrounds removal based on U<sup>2</sup>-Net. I think this tool will greatly facilitate the application of U<sup>2</sup>-Net in different fields. <br/>
-![REMBG](figures/rembg.png)
 
 **(2020-Nov-21)** Recently, we found an interesting application of U<sup>2</sup>-Net for [**human portrait drawing**](https://www.pythonf.cn/read/141098). Therefore, we trained another model for this task based on the [**APDrawingGAN dataset**](https://github.com/yiranran/APDrawingGAN).
-
-![Sample Results: Kids](figures/portrait_kids.png)
-
-![Sample Results: Ladies](figures/portrait_ladies.png)
-
-![Sample Results: Men](figures/portrait_men.png)
 
 ### Usage for portrait generation
 1. Clone this repo to local
@@ -157,9 +116,6 @@ git clone https://github.com/NathanUA/U-2-Net.git
 
 ## U<sup>2</sup>-Net Results (176.3 MB)
 
-![U<sup>2</sup>-Net Results](figures/u2netqual.png)
-
-
 ## Our previous work: [BASNet (CVPR 2019)](https://github.com/NathanUA/BASNet)
 
 ## Required libraries
@@ -185,22 +141,6 @@ or ```python u2net_test.py``` respectively. The 'model_name' in both files can b
 
  We also provide the predicted saliency maps ([u2net results](https://drive.google.com/file/d/1mZFWlS4WygWh1eVI8vK2Ad9LrPq4Hp5v/view?usp=sharing),[u2netp results](https://drive.google.com/file/d/1j2pU7vyhOO30C2S_FJuRdmAmMt3-xmjD/view?usp=sharing)) for datasets SOD, ECSSD, DUT-OMRON, PASCAL-S, HKU-IS and DUTS-TE.
 
-
-## U<sup>2</sup>-Net Architecture
-
-![U<sup>2</sup>-Net architecture](figures/U2NETPR.png)
-
-
-## Quantitative Comparison
-
-![Quantitative Comparison](figures/quan_1.png)
-
-![Quantitative Comparison](figures/quan_2.png)
-
-
-## Qualitative Comparison
-
-![Qualitative Comparison](figures/qual.png?raw=true)
 
 ## Citation
 ```
