@@ -26,7 +26,7 @@ def dice_coef(pred, target, num_classes):
 
 def predict_img(net, full_img, device, scale_factor=1, out_threshold=0.5):
     net.eval()
-    img = torch.from_numpy(BasicDataset.preprocess(None, full_img, scale_factor, is_mask=False))
+    img = torch.from_numpy(BasicDataset.preprocess(None, full_img, scale_factor, is_mask=False).copy())
     img = img.unsqueeze(0)
     img = img.to(device=device, dtype=torch.float32)
 
@@ -45,6 +45,7 @@ def predict_img(net, full_img, device, scale_factor=1, out_threshold=0.5):
             mask = torch.sigmoid(output) > out_threshold
 
     return mask[0].long().squeeze().numpy()
+
 
 
 def mask_to_image(mask: np.ndarray, mask_values):
@@ -86,7 +87,6 @@ def get_args():
                         help='輸入圖像的縮放比例')
     parser.add_argument('--bilinear', action='store_true', default=False, help='使用 bilinear 上採樣')
     parser.add_argument('--classes', '-c', type=int, default=1, help='類別數量')
-    parser.add_argument('--net', '-e', type=str, default='unet', help='使用的模型類型')
     return parser.parse_args()
 
 def compute_miou_and_mdice(gt_dir, pred_dir, num_classes):
@@ -155,11 +155,7 @@ if __name__ == '__main__':
                 if f.lower().endswith(valid_extensions)]
     out_files = [os.path.join(args.output_dir, os.path.basename(f)) for f in in_files]
 
-    # 根據指定模型構建網路
-    if args.net == 'unet':
-        net = UNET(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
-    else:
-        raise ValueError("未知的模型類型")
+    net = UNET(n_channels=3, n_classes=args.classes, bilinear=args.bilinear)
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     logging.info(f'載入模型 {args.model}')
