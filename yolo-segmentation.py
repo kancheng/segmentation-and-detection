@@ -11,134 +11,10 @@ import imutils
 import shutil
 import json
 from pathlib import Path
+import csv
 from function.fdash import report_function_d
-from function.fmiou import *
-from function.fmdice import *
+from function.feval import evaluate_miou_mdice
 
-# Args
-# EX: python3 yolo-segmentation.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
-# EX: python yolo-segmentation.py --input_datasets_yaml_path="./datasets/default_data/dataset_yolo/YOLODataset_seg/dataset.yaml" --predict_datasets_folder="./datasets/default_data/dataset_predict/"
-parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument('--input_datasets_yaml_path', help='input annotated directory')
-parser.add_argument('--predict_datasets_folder', help='predict folder')
-parser.add_argument('--name', default='dl',  help='project name')
-parser.add_argument('--epochs', default=50,  help='epochs')
-parser.add_argument('--batch', default=2,  help='batch')
-parser.add_argument('--models', default='yolo11n-seg',  help='models name')
-parser.add_argument('--num_classes', type=int, default=1, help='Number of classes for Dice calculation (including background)')
-args = parser.parse_args()
-
-# Settings Path.
-# input_datasets_yaml_path = '/mnt/ ... /dataset.yaml'
-input_datasets_yaml_path = args.input_datasets_yaml_path
-# predict_datasets_folder = '/mnt/ ... /'
-predict_datasets_folder = args.predict_datasets_folder
-
-num_classes = args.num_classes  # 类别数量，默认为 2
-# Update a setting
-# datasets_dir = os.path.abspath(os.path.dirname(input_datasets_yaml_path))
-# print(datasets_dir)
-# settings.update({"datasets_dir": datasets_dir})
-
-# Reset settings to default values
-settings.reset()
-
-# epochs
-epochs_num = int(args.epochs)
-# batch
-batch_num = int(args.batch)
-# name 
-project_name = args.name
-# models name
-models_name = args.models
-models_key = ""
-info_log_model_type = ""
-
-model_mapping = {
-    'yolov8n-seg': 'yolov8n-seg.pt',
-    'yolov8l-seg': 'yolov8l-seg.pt',
-    'yolov8m-seg': 'yolov8m-seg.pt',
-    'yolov8s-seg': 'yolov8s-seg.pt',
-    'yolov8x-seg': 'yolov8x-seg.pt',
-    'yolov9c-seg': 'yolov9c-seg.pt',
-    'yolov9e-seg': 'yolov9e-seg.pt',
-    'yolo11l-seg': 'yolo11l-seg.pt',
-    'yolo11m-seg': 'yolo11m-seg.pt',
-    'yolo11n-seg': 'yolo11n-seg.pt',
-    'yolo11s-seg': 'yolo11s-seg.pt',
-    'yolo11x-seg': 'yolo11x-seg.pt'
-}
-
-# 根據模型名稱選擇對應的模型文件，若不存在則默認使用 'yolo11n-seg.pt'
-models_key = './models/' + model_mapping.get(models_name, 'yolo11n-seg.pt')
-info_log_model_type = "INFO. Model Type : " + models_key
-print(info_log_model_type)
-
-
-print(models_key)
-print(models_name)
-# Build Dir.
-t = time.strftime("%Y%m%d%H%M%S", time.localtime())
-# temtargetpath = './yolo_runs_'+t
-p = os.getcwd()
-temtargetpath = p + '/yolo_runs_'+ models_name +'_'+ project_name +'_'+ t
-command = "yolo settings runs_dir='"+ temtargetpath +"'" 
-os.system(command)
-# print(temtargetpath)
-
-files = []
-info_files = []
-# input_folder = args.input_dir
-for filename in os.listdir(predict_datasets_folder):
-    if filename.endswith((".png", ".jpg", ".jpeg", ".bmp")):
-        info_files.append(predict_datasets_folder + "/"+ filename)
-        files.append(filename)
-info_log_files = "INFO. Files : " + str(files)
-info_log_the_file_of_number = "INFO. The File Of Number : " + str(len(files))
-print(info_log_files)
-print(info_log_the_file_of_number)
-
-# Train the model
-# Load a model
-# model_seg = YOLO("yolo11n-seg.pt")
-model_seg = YOLO(models_key)
-
-## EX: results = model.train(data="coco8-seg.yaml", epochs=100, imgsz=640)
-results_yseg = model_seg.train(data=input_datasets_yaml_path, epochs=epochs_num, imgsz=640, batch=batch_num)
-results_yseg_model_path = str(results_yseg.save_dir)+"/weights/best.pt"
-if not os.path.exists(results_yseg_model_path):
-    info_log_model = "INFO. Model training failed : " + results_yseg_model_path
-else :
-    info_log_model = "INFO. The Model training successful : " + results_yseg_model_path
-# log_file_path = os.path.dirname(os.getcwd()+"/"+str(results_yseg.save_dir)) + "/yolo_training_log.txt"
-log_file_path = os.path.dirname(str(results_yseg.save_dir)) + "/yolo_training_log.txt"
-log_file = open(log_file_path, 'w')
-log_file.write( info_log_files + '\n' + info_log_the_file_of_number + '\n' + info_log_model + '\n' + info_log_model_type)
-log_file.close()
-# Predict
-## EX : yolo segment predict model='/mnt/../../yolov8/runs/segment/train/weights/best.pt' source='/mnt/../... .png' save_txt=True
-
-model_predict = YOLO(results_yseg_model_path)
-
-for filename in info_files:
-    results_ypred = model_predict.predict(source=filename, save=True, save_txt=True)
-
-
-## 將預測結果轉換為mask
-
-label_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict/labels"
-print(label_dir)
-images_size_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict"
-print(images_size_dir)
-output_mask_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict/masks"
-print(output_mask_dir)
-# 判断路径是否存在，不存在则创建
-if not os.path.exists(output_mask_dir):
-    os.makedirs(output_mask_dir)
-
-'''
-Read txt annotation files and original images
-'''
 
 def read_txt_labels(txt_file):
     """
@@ -259,47 +135,129 @@ def yolo2maskdir_all(label_dir,images_size_dir,output_mask_dir):
         pout = os.path.join(output_mask_dir, os.path.basename(filtered_files[i]))
         yolo2maskdir(pimg,ptxt,pout)
 
-yolo2maskdir_all(label_dir,images_size_dir,output_mask_dir)
 
-# 使用範例
-predict_path = output_mask_dir  # 預測結果的路徑
-# predict_path = './datasets/default_data/dataset_masks/masks'  # 預測結果的路徑
-# ground_truth_path = './datasets/default_data/dataset_mask/masks'  # Ground Truth 的路徑
-ground_truth_path = predict_datasets_folder
-miou_value = calculate_miou(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png')
-tem_miou_value = "Mean IoU: " + str(miou_value)
-print(f'Mean IoU: {miou_value:.4f}')
+if __name__ == '__main__':
+    # Args
+    # EX: python3 yolo-segmentation.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
+    # EX: python yolo-segmentation.py --input_datasets_yaml_path="./datasets/default_data/dataset_yolo/YOLODataset_seg/dataset.yaml" --predict_datasets_folder="./datasets/default_data/dataset_predict/"
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--input_datasets_yaml_path', help='input annotated directory')
+    parser.add_argument('--predict_datasets_folder', help='predict folder')
+    parser.add_argument('--name', default='dl',  help='project name')
+    parser.add_argument('--epochs', default=50,  help='epochs')
+    parser.add_argument('--batch', default=2,  help='batch')
+    parser.add_argument('--models', default='yolo11n-seg',  help='models name')
+    parser.add_argument('--num_classes', type=int, default=1, help='Number of classes for Dice calculation (including background)')
+    args = parser.parse_args()
 
-res_file_path = os.path.dirname(str(results_yseg.save_dir)) + "/result.txt"
-# 開啟檔案，如果檔案不存在會自動創建
-with open(res_file_path, 'w', encoding='utf-8') as file:
-    # 寫入內容
-    file.write(tem_miou_value)
+    input_datasets_yaml_path = args.input_datasets_yaml_path
+    predict_datasets_folder = args.predict_datasets_folder
+    num_classes = args.num_classes
 
-print(f"檔案 '{res_file_path}' 已建立並寫入成功。")
+    settings.reset()
+    epochs_num = int(args.epochs)
+    batch_num = int(args.batch)
+    project_name = args.name
+    models_name = args.models
 
-mdice_value = calculate_mdice(predict_path, ground_truth_path, pred_ext='.jpg', gt_ext='.png', num_classes=num_classes)
-tem_mdice_value = "Mean Dice: " + str(mdice_value)
-print(f'Mean Dice: {mdice_value:.4f}')
+    model_mapping = {
+        'yolov8n-seg': 'yolov8n-seg.pt',
+        'yolov8l-seg': 'yolov8l-seg.pt',
+        'yolov8m-seg': 'yolov8m-seg.pt',
+        'yolov8s-seg': 'yolov8s-seg.pt',
+        'yolov8x-seg': 'yolov8x-seg.pt',
+        'yolov9c-seg': 'yolov9c-seg.pt',
+        'yolov9e-seg': 'yolov9e-seg.pt',
+        'yolo11l-seg': 'yolo11l-seg.pt',
+        'yolo11m-seg': 'yolo11m-seg.pt',
+        'yolo11n-seg': 'yolo11n-seg.pt',
+        'yolo11s-seg': 'yolo11s-seg.pt',
+        'yolo11x-seg': 'yolo11x-seg.pt',
+        'yolo26n-seg': 'yolo26n-seg.pt'
+    }
+    models_key = './models/' + model_mapping.get(models_name, 'yolo11n-seg.pt')
+    info_log_model_type = "INFO. Model Type : " + models_key
+    print(info_log_model_type)
+    print(models_key)
+    print(models_name)
 
-with open(res_file_path, 'a', encoding='utf-8') as file:
-    # 寫入內容
-    file.write(tem_mdice_value)
+    t = time.strftime("%Y%m%d%H%M%S", time.localtime())
+    p = os.getcwd()
+    temtargetpath = os.path.join(p, 'yolo_runs_' + models_name + '_' + project_name + '_' + t)
+    settings.update({"runs_dir": temtargetpath})
 
-print(f"檔案 '{res_file_path}' 已建立並寫入成功。")
+    files = []
+    info_files = []
+    for filename in os.listdir(predict_datasets_folder):
+        if filename.endswith((".png", ".jpg", ".jpeg", ".bmp")):
+            info_files.append(predict_datasets_folder + "/"+ filename)
+            files.append(filename)
+    info_log_files = "INFO. Files : " + str(files)
+    info_log_the_file_of_number = "INFO. The File Of Number : " + str(len(files))
+    print(info_log_files)
+    print(info_log_the_file_of_number)
 
-# Report
-# 統一基本路徑
-# base_report_path = Path("D:/default_data")
-# base_yolo_path = Path("D:/YOLO/yolo_runs_")
+    model_seg = YOLO(models_key)
+    results_yseg = model_seg.train(data=input_datasets_yaml_path, epochs=epochs_num, imgsz=640, batch=batch_num)
+    results_yseg_model_path = str(results_yseg.save_dir)+"/weights/best.pt"
+    if not os.path.exists(results_yseg_model_path):
+        info_log_model = "INFO. Model training failed : " + results_yseg_model_path
+    else:
+        info_log_model = "INFO. The Model training successful : " + results_yseg_model_path
+    log_file_path = os.path.dirname(str(results_yseg.save_dir)) + "/yolo_training_log.txt"
+    log_file = open(log_file_path, 'w')
+    log_file.write( info_log_files + '\n' + info_log_the_file_of_number + '\n' + info_log_model + '\n' + info_log_model_type)
+    log_file.close()
 
-# 定義各個路徑
-yaml_path = input_datasets_yaml_path
-original_image_dir = predict_datasets_folder
-predict_dir = images_size_dir
-train_dir = os.path.dirname(str(results_yseg.save_dir)) + '/' + "train"
-html_file = os.path.dirname(str(results_yseg.save_dir)) + '/' +  "index.html"
-pout_dir = os.path.dirname(str(results_yseg.save_dir)) + '/' +  "yolo2images"
+    model_predict = YOLO(results_yseg_model_path)
+    for filename in info_files:
+        model_predict.predict(source=filename, save=True, save_txt=True)
 
-# 呼叫報告函數
-report_function_d(yaml_path, original_image_dir, predict_dir, train_dir, html_file, pout_dir)
+    label_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict/labels"
+    print(label_dir)
+    images_size_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict"
+    print(images_size_dir)
+    output_mask_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict/masks"
+    print(output_mask_dir)
+    if not os.path.exists(output_mask_dir):
+        os.makedirs(output_mask_dir)
+
+    yolo2maskdir_all(label_dir, images_size_dir, output_mask_dir)
+
+    predict_path = output_mask_dir
+    ground_truth_path = predict_datasets_folder
+    res_dir = os.path.dirname(str(results_yseg.save_dir))
+    res_file_path = res_dir + "/result.txt"
+    csv_file_path = res_dir + "/result.csv"
+
+    per_image, total_iou, total_dice = evaluate_miou_mdice(
+        predict_path, ground_truth_path,
+        pred_ext='.jpg', gt_ext='.png', num_classes=num_classes
+    )
+
+    print("Per-image IoU / DSC (zeros excluded from totals):")
+    for filename, iou, dice in per_image:
+        print(f"  {filename}: IoU={iou:.4f}, DSC={dice:.4f}")
+    print(f"Total Mean IoU (excluding zero): {total_iou:.4f}")
+    print(f"Total Mean DSC (excluding zero): {total_dice:.4f}")
+
+    with open(csv_file_path, 'w', newline='', encoding='utf-8') as f:
+        w = csv.writer(f)
+        w.writerow(["filename", "IoU", "DSC"])
+        for filename, iou, dice in per_image:
+            w.writerow([filename, f"{iou:.6f}", f"{dice:.6f}"])
+        w.writerow(["Total (excluding zero)", f"{total_iou:.6f}", f"{total_dice:.6f}"])
+    print(f"CSV 已寫入: {csv_file_path}")
+
+    with open(res_file_path, 'w', encoding='utf-8') as file:
+        file.write("Mean IoU (excluding zero): " + str(total_iou) + "\n")
+        file.write("Mean DSC (excluding zero): " + str(total_dice) + "\n")
+    print(f"result.txt 已寫入: {res_file_path}")
+
+    yaml_path = input_datasets_yaml_path
+    original_image_dir = predict_datasets_folder
+    predict_dir = images_size_dir
+    train_dir = os.path.dirname(str(results_yseg.save_dir)) + '/' + "train"
+    html_file = os.path.dirname(str(results_yseg.save_dir)) + '/' +  "index.html"
+    pout_dir = os.path.dirname(str(results_yseg.save_dir)) + '/' +  "yolo2images"
+    report_function_d(yaml_path, original_image_dir, predict_dir, train_dir, html_file, pout_dir)

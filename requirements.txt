@@ -9,8 +9,9 @@ scikit-image
 torch
 torchvision
 torchaudio
-pillow
 opencv-python
+imutils
+gdown
 paddlepaddle
 paddlehub
 gradio

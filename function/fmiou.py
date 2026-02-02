@@ -32,6 +32,16 @@ def calculate_iou(pred_mask_path, gt_mask_path, threshold=127):
     iou = intersection / union
     return iou
 
+def calculate_iou_from_arrays(pred_bin, gt_bin):
+    """
+    從二值化陣列 (0/1) 計算 IoU，供單次讀圖後同時算 IoU 與 Dice 使用。
+    """
+    intersection = np.logical_and(pred_bin, gt_bin).sum()
+    union = np.logical_or(pred_bin, gt_bin).sum()
+    if union == 0:
+        return 0.0
+    return float(intersection / union)
+
 def calculate_miou(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png'):
     """
     計算多張預測結果和多張 Ground Truth 的 mIoU，處理附檔名不同的情況
