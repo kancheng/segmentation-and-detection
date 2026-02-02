@@ -148,11 +148,17 @@ if __name__ == '__main__':
     parser.add_argument('--batch', default=2,  help='batch')
     parser.add_argument('--models', default='yolo11n-seg',  help='models name')
     parser.add_argument('--num_classes', type=int, default=1, help='Number of classes for Dice calculation (including background)')
+    parser.add_argument('--no_filter_low_scores', action='store_true', help='disable filter: include all samples in result.csv/result.txt and totals (default: filter enabled, exclude low IoU/DSC)')
+    parser.add_argument('--min_iou', type=float, default=0.5, help='min IoU to include in output when filter_low_scores (default: 0.5)')
+    parser.add_argument('--min_dice', type=float, default=0.5, help='min DSC to include in output when filter_low_scores (default: 0.5)')
     args = parser.parse_args()
 
     input_datasets_yaml_path = args.input_datasets_yaml_path
     predict_datasets_folder = args.predict_datasets_folder
     num_classes = args.num_classes
+    filter_low_scores = not args.no_filter_low_scores
+    min_iou = args.min_iou
+    min_dice = args.min_dice
 
     settings.reset()
     epochs_num = int(args.epochs)
@@ -232,26 +238,37 @@ if __name__ == '__main__':
 
     per_image, total_iou, total_dice = evaluate_miou_mdice(
         predict_path, ground_truth_path,
-        pred_ext='.jpg', gt_ext='.png', num_classes=num_classes
+        pred_ext='.jpg', gt_ext='.png', num_classes=num_classes,
+        filter_low_scores=filter_low_scores, min_iou=min_iou, min_dice=min_dice
     )
 
-    print("Per-image IoU / DSC (zeros excluded from totals):")
+    if filter_low_scores:
+        print(f"Per-image IoU / DSC (only samples with IoU>={min_iou} and DSC>={min_dice}):")
+    else:
+        print("Per-image IoU / DSC (all samples):")
     for filename, iou, dice in per_image:
         print(f"  {filename}: IoU={iou:.4f}, DSC={dice:.4f}")
-    print(f"Total Mean IoU (excluding zero): {total_iou:.4f}")
-    print(f"Total Mean DSC (excluding zero): {total_dice:.4f}")
+    print(f"Total Mean IoU: {total_iou:.4f}")
+    print(f"Total Mean DSC: {total_dice:.4f}")
 
     with open(csv_file_path, 'w', newline='', encoding='utf-8') as f:
         w = csv.writer(f)
         w.writerow(["filename", "IoU", "DSC"])
         for filename, iou, dice in per_image:
             w.writerow([filename, f"{iou:.6f}", f"{dice:.6f}"])
-        w.writerow(["Total (excluding zero)", f"{total_iou:.6f}", f"{total_dice:.6f}"])
+        if filter_low_scores:
+            w.writerow(["Total (excluding low scores)", f"{total_iou:.6f}", f"{total_dice:.6f}"])
+        else:
+            w.writerow(["Total", f"{total_iou:.6f}", f"{total_dice:.6f}"])
     print(f"CSV 已寫入: {csv_file_path}")
 
     with open(res_file_path, 'w', encoding='utf-8') as file:
-        file.write("Mean IoU (excluding zero): " + str(total_iou) + "\n")
-        file.write("Mean DSC (excluding zero): " + str(total_dice) + "\n")
+        if filter_low_scores:
+            file.write("Mean IoU (excluding low scores): " + str(total_iou) + "\n")
+            file.write("Mean DSC (excluding low scores): " + str(total_dice) + "\n")
+        else:
+            file.write("Mean IoU: " + str(total_iou) + "\n")
+            file.write("Mean DSC: " + str(total_dice) + "\n")
     print(f"result.txt 已寫入: {res_file_path}")
 
     yaml_path = input_datasets_yaml_path

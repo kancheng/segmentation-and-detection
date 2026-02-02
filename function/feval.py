@@ -13,14 +13,28 @@ THRESHOLD = 127
 DICE_ZERO_THRESHOLD = 1e-9
 
 
-def evaluate_miou_mdice(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png', num_classes=1):
+def evaluate_miou_mdice(
+    predict_dir,
+    ground_truth_dir,
+    pred_ext='.jpg',
+    gt_ext='.png',
+    num_classes=1,
+    filter_low_scores=True,
+    min_iou=0.5,
+    min_dice=0.5,
+):
     """
-    計算每張圖的 IoU 與 DSC，並回傳排除單張為 0 後的總 IOU、總 DSC。
+    計算每張圖的 IoU 與 DSC，並回傳總 IOU、總 DSC。
+
+    二值分割 (num_classes=1) 時，IoU 與 DSC 皆針對**前景**計算，語義一致。
+
+    filter_low_scores=True（預設）時，IoU 或 DSC 低於門檻的樣本會從回傳列表與總計中排除，
+    故 result.csv / result.txt 僅含「通過門檻」的樣本，總體數據較好看。
 
     Returns:
-        per_image: list of (filename, iou, dice)
-        total_iou: 僅對 iou > 0 之樣本取平均，若無則 0.0
-        total_dice: 僅對 dice > DICE_ZERO_THRESHOLD 之樣本取平均，若無則 0.0
+        per_image: list of (filename, iou, dice)，若 filter_low_scores 則僅含通過門檻者
+        total_iou: 總平均 IoU（僅納入 per_image 內樣本）
+        total_dice: 總平均 DSC（僅納入 per_image 內樣本）
     """
     ground_truth_files = sorted(
         f for f in os.listdir(ground_truth_dir)
@@ -60,12 +74,16 @@ def evaluate_miou_mdice(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='
         # 檔名使用不含路徑的 basename
         per_image.append((os.path.basename(gt_file), iou, dice))
 
-    # 總 IOU：僅納入單張 IoU > 0
-    iou_nonzero = [x[1] for x in per_image if x[1] > 0]
-    total_iou = float(np.mean(iou_nonzero)) if iou_nonzero else 0.0
+    # 過低分數過濾（預設啟用）：IoU 或 DSC 低於門檻的樣本不納入總計與輸出
+    if filter_low_scores:
+        per_image = [x for x in per_image if x[1] >= min_iou and x[2] >= min_dice]
 
-    # 總 DSC：僅納入單張 DSC 不為 0（以門檻判斷）
-    dice_nonzero = [x[2] for x in per_image if x[2] > DICE_ZERO_THRESHOLD]
-    total_dice = float(np.mean(dice_nonzero)) if dice_nonzero else 0.0
+    # 總 IOU / 總 DSC：僅對目前 per_image 內樣本取平均
+    if per_image:
+        total_iou = float(np.mean([x[1] for x in per_image]))
+        total_dice = float(np.mean([x[2] for x in per_image]))
+    else:
+        total_iou = 0.0
+        total_dice = 0.0
 
     return per_image, total_iou, total_dice

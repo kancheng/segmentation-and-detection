@@ -18,23 +18,26 @@ import cv2
 
 def dice_coef(pred, target, num_classes):
     """
-    计算 Dice 系数
+    計算 Dice 係數。
+
+    二值分割 (num_classes=1)：只計算**前景** (class 1)，與 IoU 語義一致，
+    避免出現 IoU=0 但 DSC 很高的矛盾（先前 num_classes=1 時算的是背景 class 0）。
+    多類 (num_classes>=2)：對 class 0..num_classes-1 取平均。
     """
     smooth = 1.0
     dice = 0.0
-    for cls in range(num_classes):
-        # 将 NumPy 数组转换为 float 类型
+    if num_classes == 1:
+        # 二值分割：只算前景 (1)，與 IoU 一致
+        classes_to_use = [1]
+    else:
+        classes_to_use = list(range(num_classes))
+    for cls in classes_to_use:
         pred_cls = (pred == cls).astype(np.float32)
         target_cls = (target == cls).astype(np.float32)
-        
-        # 计算交集与并集
         intersection = (pred_cls * target_cls).sum()
         union = pred_cls.sum() + target_cls.sum()
-        
-        # 更新 Dice 系数
         dice += (2. * intersection + smooth) / (union + smooth)
-    
-    return dice / num_classes
+    return dice / len(classes_to_use)
 
 def calculate_mdice(predict_dir, ground_truth_dir, pred_ext='.jpg', gt_ext='.png', num_classes=2):
     """
