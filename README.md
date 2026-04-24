@@ -179,6 +179,14 @@ python simple-yolo-segmentation.py --epochs 10 --data coco8-seg.yaml --model ./m
 
 python simple-yolo-segmentation_sahi.py --epochs 10 --data coco8-seg.yaml --model ./models/yolo11n-seg.pt --imgsz 640 --device cpu
 
+python .\yolo-detection.py --input_datasets_yaml_path "\default_data\dataset.yaml" --predict_datasets_folder "\dataset_predict" --epochs 10 --batch 2 --models yolo11n --name sds900_test
+
+python .\yolo-detection_sahi.py --input_datasets_yaml_path "\default_data\dataset.yaml" --predict_datasets_folder "\dataset_predict" --epochs 10 --batch 2 --models yolo11n --device cpu --name sds900_test_sahi
+
+python .\yolo-segmentation.py --input_datasets_yaml_path "\default_data\dataset.yaml" --predict_datasets_folder "\dataset_predict" --epochs 10 --batch 2 --models yolo11n-seg --num_classes 1 --name sds900_seg_test
+
+python .\yolo-segmentation_sahi.py --input_datasets_yaml_path "\default_data\dataset.yaml" --predict_datasets_folder "\dataset_predict" --epochs 10 --batch 2 --models yolo11n-seg --num_classes 1 --device cpu --name sds900_seg_sahi
+
 ```
 
 
