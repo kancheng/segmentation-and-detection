@@ -1,37 +1,49 @@
+import argparse
+
 from sahi import AutoDetectionModel
 from sahi.predict import get_sliced_prediction
 from ultralytics import YOLO
 
-# Create a new YOLO model from scratch
-model = YOLO("yolo11n.yaml")
 
-# Load a pretrained YOLO model (recommended for training)
-model = YOLO("./models/yolo11n.pt")
+def parse_args():
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("--model", default="./models/yolo11n.pt", help="Path to pretrained model")
+    parser.add_argument("--data", default="coco8.yaml", help="Path to training dataset YAML")
+    parser.add_argument("--epochs", type=int, default=3, help="Number of training epochs")
+    parser.add_argument("--device", default="cpu", help="Inference device, e.g. cpu or cuda:0")
+    parser.add_argument("--conf", type=float, default=0.25, help="Confidence threshold")
+    parser.add_argument("--slice_height", type=int, default=640, help="Slice height")
+    parser.add_argument("--slice_width", type=int, default=640, help="Slice width")
+    parser.add_argument("--overlap_height_ratio", type=float, default=0.2, help="Slice overlap ratio on height")
+    parser.add_argument("--overlap_width_ratio", type=float, default=0.2, help="Slice overlap ratio on width")
+    parser.add_argument("--predict_source", default="https://ultralytics.com/images/bus.jpg", help="Input source for prediction")
+    parser.add_argument("--export_format", default="onnx", help="Format used for model export")
+    return parser.parse_args()
 
-# Train the model using the 'coco8.yaml' dataset for 3 epochs
-results = model.train(data="coco8.yaml", epochs=3)
 
-# Evaluate the model's performance on the validation set
-results = model.val()
+def main():
+    args = parse_args()
+    model = YOLO(args.model)
+    model.train(data=args.data, epochs=args.epochs)
+    model.val()
 
-# SAHI sliced inference
-detection_model = AutoDetectionModel.from_pretrained(
-    model_type="ultralytics",
-    model_path="./models/yolo11n.pt",
-    confidence_threshold=0.25,
-    device="cpu",
-)
+    detection_model = AutoDetectionModel.from_pretrained(
+        model_type="ultralytics",
+        model_path=args.model,
+        confidence_threshold=args.conf,
+        device=args.device,
+    )
+    result = get_sliced_prediction(
+        args.predict_source,
+        detection_model,
+        slice_height=args.slice_height,
+        slice_width=args.slice_width,
+        overlap_height_ratio=args.overlap_height_ratio,
+        overlap_width_ratio=args.overlap_width_ratio,
+    )
+    print(f"SAHI detections: {len(result.object_prediction_list)}")
+    model.export(format=args.export_format)
 
-result = get_sliced_prediction(
-    "https://ultralytics.com/images/bus.jpg",
-    detection_model,
-    slice_height=640,
-    slice_width=640,
-    overlap_height_ratio=0.2,
-    overlap_width_ratio=0.2,
-)
 
-print(f"SAHI detections: {len(result.object_prediction_list)}")
-
-# Export the model to ONNX format
-success = model.export(format="onnx")
+if __name__ == "__main__":
+    main()

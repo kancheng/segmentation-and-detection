@@ -83,12 +83,79 @@ python3 yolo-segmentation.py --input_datasets_yaml_path="/path/to/dataset.yaml" 
 
 評估時會比對 **預測 mask** 與 **Ground Truth**（由 `--predict_datasets_folder` 指定目錄內的對應檔名），計算每張圖的 **IoU** 與 **DSC (Dice)**，並輸出排除無效樣本後的總平均。
 
+## 測試支援（Simple Scripts）
+
+為了快速驗證環境、模型與基本流程，專案提供四支可直接測試的參數化腳本：
+
+- `simple-yolo-detection.py`
+- `simple-yolo-detection_sahi.py`
+- `simple-yolo-segmentation.py`
+- `simple-yolo-segmentation_sahi.py`
+
+> 這四支腳本目前都支援 `--epochs` 參數，不再使用寫死的訓練輪數。
+
+### 1) Detection（不含 SAHI）
+
+```bash
+python simple-yolo-detection.py --epochs 10 --data coco8.yaml --model ./models/yolo11n.pt
+```
+
+常用參數：
+
+- `--model`：Path to pretrained model
+- `--data`：Path to training dataset YAML
+- `--epochs`：Number of training epochs
+- `--predict_source`：Input source for prediction
+- `--export_format`：Format used for model export
+
+### 2) Detection（SAHI 切片推論）
+
+```bash
+python simple-yolo-detection_sahi.py --epochs 10 --data coco8.yaml --model ./models/yolo11n.pt --device cpu
+```
+
+額外支援 SAHI 參數：
+
+- `--conf`
+- `--slice_height`
+- `--slice_width`
+- `--overlap_height_ratio`
+- `--overlap_width_ratio`
+
+### 3) Segmentation（不含 SAHI）
+
+```bash
+python simple-yolo-segmentation.py --epochs 10 --data coco8-seg.yaml --model ./models/yolo11n-seg.pt --imgsz 640
+```
+
+常用參數：
+
+- `--model`：Path to pretrained segmentation model
+- `--data`：Path to training dataset YAML
+- `--epochs`：Number of training epochs
+- `--imgsz`：Training image size
+- `--predict_source`：Input source for prediction
+- `--export_format`：Format used for model export
+
+### 4) Segmentation（SAHI 切片推論）
+
+```bash
+python simple-yolo-segmentation_sahi.py --epochs 10 --data coco8-seg.yaml --model ./models/yolo11n-seg.pt --imgsz 640 --device cpu
+```
+
+建議先以預設參數跑通，再依資料集大小調整 `--epochs`、`--imgsz`、切片大小與重疊比例。
+
 ## 專案結構概覽
 
 ```
 segmentation-and-detection/
 ├── yolo-segmentation.py   # YOLO 分割：訓練、預測、評估主程式
 ├── yolo-detection.py     # YOLO 偵測
+├── yolo-detection_sahi.py # YOLO 偵測（含 SAHI）
+├── simple-yolo-detection.py
+├── simple-yolo-detection_sahi.py
+├── simple-yolo-segmentation.py
+├── simple-yolo-segmentation_sahi.py
 ├── yolo-predict.py       # YOLO 預測
 ├── train_unet.py         # UNet 訓練
 ├── train_u2net.py        # U2Net 訓練
@@ -102,6 +169,18 @@ segmentation-and-detection/
 ├── models/               # 模型權重存放目錄
 └── requirements.txt
 ```
+
+```
+python simple-yolo-detection.py --epochs 10 --data coco8.yaml --model ./models/yolo11n.pt
+
+python simple-yolo-detection_sahi.py --epochs 10 --data coco8.yaml --model ./models/yolo11n.pt --device cpu
+
+python simple-yolo-segmentation.py --epochs 10 --data coco8-seg.yaml --model ./models/yolo11n-seg.pt --imgsz 640
+
+python simple-yolo-segmentation_sahi.py --epochs 10 --data coco8-seg.yaml --model ./models/yolo11n-seg.pt --imgsz 640 --device cpu
+
+```
+
 
 ## 授權
 
