@@ -15,3 +15,4 @@ gdown
 paddlepaddle
 paddlehub
 gradio
+sahi
