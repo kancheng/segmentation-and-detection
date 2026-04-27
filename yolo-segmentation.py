@@ -1,17 +1,16 @@
 import os
 import time
 from ultralytics import YOLO
-from ultralytics import settings
 import argparse 
 from PIL import Image
 import cv2
 import numpy as np
 import base64
-import imutils
 import shutil
 import json
 from pathlib import Path
 import csv
+import torch
 from function.fdash import report_function_d
 from function.feval import evaluate_miou_mdice
 
@@ -136,6 +135,13 @@ def yolo2maskdir_all(label_dir,images_size_dir,output_mask_dir):
         yolo2maskdir(pimg,ptxt,pout)
 
 
+def release_memory(device):
+    if str(device).lower().startswith("cpu"):
+        torch.set_num_threads(1)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 if __name__ == '__main__':
     # Args
     # EX: python3 yolo-segmentation.py --input_datasets_yaml_path="/mnt/.../dataset.yaml" --predict_datasets_folder="/mnt/.../"
@@ -147,11 +153,15 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', default=50,  help='epochs')
     parser.add_argument('--batch', default=2,  help='batch')
     parser.add_argument('--models', default='yolo11n-seg',  help='models name')
+    parser.add_argument('--output_root', default='./yolo_runs', help='root directory for all Ultralytics outputs')
+    parser.add_argument('--device', default='cpu', help='inference device, e.g. cpu / cuda:0')
+    parser.add_argument('--predict_imgsz', type=int, default=512, help='prediction image size (lower uses less RAM)')
     parser.add_argument('--num_classes', type=int, default=1, help='Number of classes for Dice calculation (including background)')
     parser.add_argument('--no_filter_low_scores', action='store_true', help='disable filter: include all samples in result.csv/result.txt and totals (default: filter enabled, exclude low IoU/DSC)')
     parser.add_argument('--min_iou', type=float, default=0.5, help='min IoU to include in output when filter_low_scores (default: 0.5)')
     parser.add_argument('--min_dice', type=float, default=0.5, help='min DSC to include in output when filter_low_scores (default: 0.5)')
     args = parser.parse_args()
+    release_memory(args.device)
 
     input_datasets_yaml_path = args.input_datasets_yaml_path
     predict_datasets_folder = args.predict_datasets_folder
@@ -160,11 +170,12 @@ if __name__ == '__main__':
     min_iou = args.min_iou
     min_dice = args.min_dice
 
-    settings.reset()
     epochs_num = int(args.epochs)
     batch_num = int(args.batch)
     project_name = args.name
     models_name = args.models
+    output_root = os.path.abspath(os.path.expanduser(args.output_root))
+    os.makedirs(output_root, exist_ok=True)
 
     model_mapping = {
         'yolov8n-seg': 'yolov8n-seg.pt',
@@ -188,9 +199,7 @@ if __name__ == '__main__':
     print(models_name)
 
     t = time.strftime("%Y%m%d%H%M%S", time.localtime())
-    p = os.getcwd()
-    temtargetpath = os.path.join(p, 'yolo_runs_' + models_name + '_' + project_name + '_' + t)
-    settings.update({"runs_dir": temtargetpath})
+    run_name = f"{models_name}_{project_name}_{t}"
 
     files = []
     info_files = []
@@ -204,26 +213,49 @@ if __name__ == '__main__':
     print(info_log_the_file_of_number)
 
     model_seg = YOLO(models_key)
-    results_yseg = model_seg.train(data=input_datasets_yaml_path, epochs=epochs_num, imgsz=640, batch=batch_num)
+    results_yseg = model_seg.train(
+        data=input_datasets_yaml_path,
+        epochs=epochs_num,
+        imgsz=640,
+        batch=batch_num,
+        project=output_root,
+        name=run_name,
+    )
     results_yseg_model_path = str(results_yseg.save_dir)+"/weights/best.pt"
     if not os.path.exists(results_yseg_model_path):
         info_log_model = "INFO. Model training failed : " + results_yseg_model_path
     else:
         info_log_model = "INFO. The Model training successful : " + results_yseg_model_path
-    log_file_path = os.path.dirname(str(results_yseg.save_dir)) + "/yolo_training_log.txt"
+    run_dir = Path(results_yseg.save_dir)
+    log_file_path = str(run_dir / "yolo_training_log.txt")
     log_file = open(log_file_path, 'w')
     log_file.write( info_log_files + '\n' + info_log_the_file_of_number + '\n' + info_log_model + '\n' + info_log_model_type)
     log_file.close()
 
     model_predict = YOLO(results_yseg_model_path)
-    for filename in info_files:
-        model_predict.predict(source=filename, save=True, save_txt=True)
+    predict_dir = run_dir / "predict"
+    for image_path in info_files:
+        predict_results = model_predict.predict(
+            source=image_path,
+            save=True,
+            save_txt=True,
+            imgsz=args.predict_imgsz,
+            device=args.device,
+            batch=1,
+            stream=True,
+            project=str(run_dir),
+            name="predict",
+            exist_ok=True,
+        )
+        for _ in predict_results:
+            pass
+        release_memory(args.device)
 
-    label_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict/labels"
+    label_dir = str(predict_dir / "labels")
     print(label_dir)
-    images_size_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict"
+    images_size_dir = str(predict_dir)
     print(images_size_dir)
-    output_mask_dir = os.path.dirname(str(results_yseg.save_dir)) + "/predict/masks"
+    output_mask_dir = str(predict_dir / "masks")
     print(output_mask_dir)
     if not os.path.exists(output_mask_dir):
         os.makedirs(output_mask_dir)
@@ -232,7 +264,7 @@ if __name__ == '__main__':
 
     predict_path = output_mask_dir
     ground_truth_path = predict_datasets_folder
-    res_dir = os.path.dirname(str(results_yseg.save_dir))
+    res_dir = str(run_dir)
     res_file_path = res_dir + "/result.txt"
     csv_file_path = res_dir + "/result.csv"
 
@@ -274,7 +306,7 @@ if __name__ == '__main__':
     yaml_path = input_datasets_yaml_path
     original_image_dir = predict_datasets_folder
     predict_dir = images_size_dir
-    train_dir = os.path.dirname(str(results_yseg.save_dir)) + '/' + "train"
-    html_file = os.path.dirname(str(results_yseg.save_dir)) + '/' +  "index.html"
-    pout_dir = os.path.dirname(str(results_yseg.save_dir)) + '/' +  "yolo2images"
+    train_dir = str(run_dir)
+    html_file = str(run_dir / "index.html")
+    pout_dir = str(run_dir / "yolo2images")
     report_function_d(yaml_path, original_image_dir, predict_dir, train_dir, html_file, pout_dir)

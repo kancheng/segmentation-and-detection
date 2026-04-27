@@ -5,6 +5,7 @@ test-code/
 wandb/
 *.pth
 runs/
+yolo_runs/
 yolo_runs_*
 
 *.pyc

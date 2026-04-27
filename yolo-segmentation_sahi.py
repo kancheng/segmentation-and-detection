@@ -4,11 +4,16 @@ import os
 import time
 from pathlib import Path
 
+# Workaround for duplicated OpenMP runtime on some Windows/Conda setups.
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
 import cv2
 import numpy as np
+import torch
 from sahi import AutoDetectionModel
 from sahi.predict import get_sliced_prediction
-from ultralytics import YOLO, settings
+from ultralytics import YOLO
 
 from function.fdash import report_function_d
 from function.feval import evaluate_miou_mdice
@@ -27,11 +32,13 @@ def parse_args():
     parser.add_argument("--min_iou", type=float, default=0.5, help="min IoU when filtering")
     parser.add_argument("--min_dice", type=float, default=0.5, help="min DSC when filtering")
     parser.add_argument("--device", default="cpu", help="inference device, e.g. cpu / cuda:0")
+    parser.add_argument("--imgsz", type=int, default=512, help="inference image size for SAHI model")
     parser.add_argument("--conf", type=float, default=0.25, help="confidence threshold")
-    parser.add_argument("--slice_height", type=int, default=640, help="slice height")
-    parser.add_argument("--slice_width", type=int, default=640, help="slice width")
-    parser.add_argument("--overlap_height_ratio", type=float, default=0.2, help="slice overlap height ratio")
-    parser.add_argument("--overlap_width_ratio", type=float, default=0.2, help="slice overlap width ratio")
+    parser.add_argument("--slice_height", type=int, default=512, help="slice height")
+    parser.add_argument("--slice_width", type=int, default=512, help="slice width")
+    parser.add_argument("--overlap_height_ratio", type=float, default=0.1, help="slice overlap height ratio")
+    parser.add_argument("--overlap_width_ratio", type=float, default=0.1, help="slice overlap width ratio")
+    parser.add_argument("--output_root", default="./yolo_runs", help="root directory for all Ultralytics outputs")
     return parser.parse_args()
 
 
@@ -127,18 +134,27 @@ def yolo2maskdir_all(label_dir, images_dir, output_mask_dir):
         yolo_txt_to_mask(image_path, txt_path, out_path)
 
 
+def release_memory(device):
+    if str(device).lower().startswith("cpu"):
+        torch.set_num_threads(1)
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
 def main():
     args = parse_args()
+    release_memory(args.device)
     input_datasets_yaml_path = args.input_datasets_yaml_path
     predict_datasets_folder = args.predict_datasets_folder
     num_classes = args.num_classes
     filter_low_scores = not args.no_filter_low_scores
 
-    settings.reset()
     epochs_num = int(args.epochs)
     batch_num = int(args.batch)
     project_name = args.name
     models_name = args.models
+    output_root = Path(args.output_root).expanduser().resolve()
+    output_root.mkdir(parents=True, exist_ok=True)
 
     model_mapping = {
         "yolov8n-seg": "yolov8n-seg.pt",
@@ -160,9 +176,7 @@ def main():
     print(info_log_model_type)
 
     t = time.strftime("%Y%m%d%H%M%S", time.localtime())
-    p = os.getcwd()
-    runs_dir = os.path.join(p, f"yolo_runs_{models_name}_{project_name}_{t}")
-    settings.update({"runs_dir": runs_dir})
+    run_name = f"{models_name}_{project_name}_{t}"
 
     image_paths = []
     image_names = []
@@ -177,7 +191,14 @@ def main():
     print(info_log_the_file_of_number)
 
     model_seg = YOLO(models_key)
-    results_yseg = model_seg.train(data=input_datasets_yaml_path, epochs=epochs_num, imgsz=640, batch=batch_num)
+    results_yseg = model_seg.train(
+        data=input_datasets_yaml_path,
+        epochs=epochs_num,
+        imgsz=640,
+        batch=batch_num,
+        project=str(output_root),
+        name=run_name,
+    )
     best_model_path = str(results_yseg.save_dir) + "/weights/best.pt"
 
     if not os.path.exists(best_model_path):
@@ -185,7 +206,8 @@ def main():
     else:
         info_log_model = "INFO. The Model training successful : " + best_model_path
 
-    log_file_path = os.path.dirname(str(results_yseg.save_dir)) + "/yolo_training_log.txt"
+    run_dir = Path(results_yseg.save_dir)
+    log_file_path = str(run_dir / "yolo_training_log.txt")
     with open(log_file_path, "w", encoding="utf-8") as log_file:
         log_file.write(
             info_log_files
@@ -200,12 +222,13 @@ def main():
     sahi_model = AutoDetectionModel.from_pretrained(
         model_type="ultralytics",
         model_path=best_model_path,
+        image_size=args.imgsz,
         confidence_threshold=args.conf,
         device=args.device,
     )
 
-    res_dir = Path(os.path.dirname(str(results_yseg.save_dir)))
-    predict_dir = res_dir / "predict_sahi"
+    res_dir = run_dir
+    predict_dir = res_dir / "predict"
     labels_dir = predict_dir / "labels"
     output_mask_dir = predict_dir / "masks"
     predict_dir.mkdir(parents=True, exist_ok=True)
@@ -229,6 +252,7 @@ def main():
         if saved_visual.exists():
             saved_visual.replace(final_visual)
         write_prediction_txt(result, labels_dir / f"{image_stem}.txt")
+        release_memory(args.device)
 
     yolo2maskdir_all(str(labels_dir), str(predict_dir), str(output_mask_dir))
 
@@ -263,7 +287,7 @@ def main():
 
     yaml_path = input_datasets_yaml_path
     original_image_dir = predict_datasets_folder
-    train_dir = str(res_dir / "train")
+    train_dir = str(res_dir)
     html_file = str(res_dir / "index.html")
     pout_dir = str(res_dir / "yolo2images")
     report_function_d(yaml_path, original_image_dir, str(predict_dir), train_dir, html_file, pout_dir)

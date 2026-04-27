@@ -3,7 +3,6 @@ from PIL import Image
 import time
 import base64
 import cv2
-import imutils
 import shutil
 import numpy as np
 import json
@@ -11,6 +10,19 @@ from pathlib import Path
 
 # 定義允許的影像副檔名
 allowed_img_exts = (".png", ".bmp", ".jpg", ".jpeg", ".gif")
+
+
+def resize_by_height(image, height):
+    """Resize image by target height while keeping aspect ratio."""
+    if image is None:
+        return image
+    src_h, src_w = image.shape[:2]
+    if src_h <= 0 or src_w <= 0 or height <= 0:
+        return image
+    scale = float(height) / float(src_h)
+    target_w = max(1, int(src_w * scale))
+    target_h = max(1, int(height))
+    return cv2.resize(image, (target_w, target_h), interpolation=cv2.INTER_AREA)
 
 def info_ms(key, path):
     my_file = Path(path)
@@ -223,7 +235,7 @@ def report_function_d(ymal_path, original_image, predict_folder, train_folder, h
             image_path = train_folder / filename  # Replace with your image file path
             img = cv2.imread(str(image_path))
             h, w, _ = img.shape
-            img_resize = imutils.resize(img, height=(h//2))
+            img_resize = resize_by_height(img, height=(h // 2))
             h, w, _ = img_resize.shape
             print("H : ", h ,"; W : ", w)
             image = cv2.imencode('.png', img_resize)[1]
@@ -310,7 +322,7 @@ def report_function_d(ymal_path, original_image, predict_folder, train_folder, h
         # Original image
         img = cv2.imread(str(original_image_path))
         h, w, _ = img.shape
-        img_resize = imutils.resize(img, height=(h//4))
+        img_resize = resize_by_height(img, height=(h // 4))
         h, w, _ = img_resize.shape
         print("H : ", h ,"; W : ", w)
         image = cv2.imencode('.png', img_resize)[1]
@@ -322,7 +334,7 @@ def report_function_d(ymal_path, original_image, predict_folder, train_folder, h
         tar = resdir / (stem + ".png")
         img = cv2.imread(str(tar))
         h, w, _ = img.shape
-        img_resize = imutils.resize(img, height=(h//4))
+        img_resize = resize_by_height(img, height=(h // 4))
         h, w, _ = img_resize.shape
         print("H : ", h ,"; W : ", w)
         image = cv2.imencode('.png', img_resize)[1]
@@ -333,7 +345,7 @@ def report_function_d(ymal_path, original_image, predict_folder, train_folder, h
         # Predict
         img = cv2.imread(str(image_path))
         h, w, _ = img.shape
-        img_resize = imutils.resize(img, height=(h//4))
+        img_resize = resize_by_height(img, height=(h // 4))
         h, w, _ = img_resize.shape
         print("H : ", h ,"; W : ", w)
         image = cv2.imencode('.png', img_resize)[1]
